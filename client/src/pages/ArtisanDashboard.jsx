@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { TrendingUp, Award, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, Award, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
 import PortfolioManager from "../components/PortfolioManager";
@@ -181,6 +181,27 @@ export default function ArtisanDashboard({ user }) {
           />
         ))}
         {leads.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No leads yet.</div>}
+      </div>
+
+      <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
+        YOUR REVIEWS
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
+        {profile.reviews.map((r) => (
+          <div key={r.id} style={{ borderLeft: "3px solid var(--amber)", paddingLeft: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--navy)" }}>{r.author}</span>
+              <span style={{ display: "flex", gap: 1 }}>
+                {Array.from({ length: 5 }).map((_, j) => (
+                  <Star key={j} size={11} fill={j < r.rating ? "var(--amber)" : "none"} color="var(--amber)" />
+                ))}
+              </span>
+              <span style={{ fontSize: 11, color: "var(--steel)" }}>{formatDate(r.created_at)}</span>
+            </div>
+            <div style={{ fontSize: 13, color: "#3C3A33", marginTop: 3 }}>{r.comment}</div>
+          </div>
+        ))}
+        {profile.reviews.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No reviews yet.</div>}
       </div>
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
