@@ -4,9 +4,9 @@ import { TRADES } from "../constants/trades";
 import TradeCombobox from "../components/TradeCombobox";
 import LocationPicker from "../components/LocationPicker";
 
-export default function Auth({ onAuth, initialMode = "login", initialRole = "client", compact = false }) {
+export default function Auth({ onAuth, initialMode = "login", initialRole = "client", compact = false, lockRole = null }) {
   const [mode, setMode] = useState(initialMode);
-  const [role, setRole] = useState(initialRole);
+  const [role, setRole] = useState(lockRole || initialRole);
   const [form, setForm] = useState({ name: "", email: "", password: "", city: "", trade: TRADES[0], bio: "" });
   const [location, setLocation] = useState({ country: "", state: "", city: "" });
   const [error, setError] = useState("");
@@ -77,14 +77,16 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
       <form onSubmit={submit}>
         {mode === "register" && (
           <>
-            <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
-              <button type="button" onClick={() => setRole("client")} className="btn-secondary" style={{ flex: 1, background: role === "client" ? "var(--chalk)" : "transparent", borderColor: role === "client" ? "var(--navy)" : "var(--line)" }}>
-                I NEED WORK DONE
-              </button>
-              <button type="button" onClick={() => setRole("artisan")} className="btn-secondary" style={{ flex: 1, background: role === "artisan" ? "var(--chalk)" : "transparent", borderColor: role === "artisan" ? "var(--navy)" : "var(--line)" }}>
-                I DO THE WORK
-              </button>
-            </div>
+            {!lockRole && (
+              <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
+                <button type="button" onClick={() => setRole("client")} className="btn-secondary" style={{ flex: 1, background: role === "client" ? "var(--chalk)" : "transparent", borderColor: role === "client" ? "var(--navy)" : "var(--line)" }}>
+                  I NEED WORK DONE
+                </button>
+                <button type="button" onClick={() => setRole("artisan")} className="btn-secondary" style={{ flex: 1, background: role === "artisan" ? "var(--chalk)" : "transparent", borderColor: role === "artisan" ? "var(--navy)" : "var(--line)" }}>
+                  I DO THE WORK
+                </button>
+              </div>
+            )}
             <input className="input" placeholder="Full name" value={form.name} onChange={set("name")} style={{ marginBottom: 10 }} />
           </>
         )}

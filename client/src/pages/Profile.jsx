@@ -38,7 +38,7 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
         <div style={{ fontSize: 12, color: "var(--steel)", marginTop: 4, marginBottom: 16, lineHeight: 1.5 }}>
           Create a free account (or sign in) to contact professionals — you'll come right back here to send your message.
         </div>
-        <Auth compact initialMode="register" initialRole="client" onAuth={onGuestAuth} />
+        <Auth compact initialMode="register" initialRole="client" lockRole="client" onAuth={onGuestAuth} />
       </div>
     );
   }
