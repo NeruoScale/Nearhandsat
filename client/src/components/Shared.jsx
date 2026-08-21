@@ -3,6 +3,10 @@ import { Star, CheckCircle2, MapPin, Zap, Wrench, Hammer, PaintBucket } from "lu
 
 export const ICONS = { Electrician: Zap, Plumber: Wrench, Carpenter: Hammer, Painter: PaintBucket };
 
+export function formatLocation({ city, state, country }) {
+  return [city, state, country].filter(Boolean).join(", ");
+}
+
 export function Tag({ children, tone = "steel" }) {
   const tones = {
     steel: { bg: "#EAE7DC", fg: "var(--steel)" },
@@ -104,7 +108,7 @@ export function WorkTag({ artisan, onClick }) {
             </div>
             <div style={{ fontSize: 12, color: "var(--steel)", display: "flex", alignItems: "center", gap: 4 }}>
               <MapPin size={11} />
-              {artisan.city} · {artisan.trade}
+              {formatLocation(artisan)} · {artisan.trade}
             </div>
           </div>
         </div>

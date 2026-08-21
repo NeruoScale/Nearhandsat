@@ -7,7 +7,7 @@ const { SECRET } = require("../middleware/auth");
 const router = express.Router();
 
 router.post("/register", (req, res) => {
-  const { role, name, email, password, city, trade, bio } = req.body || {};
+  const { role, name, email, password, city, country, state, trade, bio } = req.body || {};
   if (!role || !name || !email || !password) {
     return res.status(400).json({ error: "Name, email, password, and account type are required." });
   }
@@ -24,12 +24,12 @@ router.post("/register", (req, res) => {
   const userId = info.lastInsertRowid;
 
   if (role === "artisan") {
-    if (!trade || !city) {
-      return res.status(400).json({ error: "Trade and city are required for artisan accounts." });
+    if (!trade || !city || !country) {
+      return res.status(400).json({ error: "Trade, country, and city are required for artisan accounts." });
     }
     db.prepare(
-      "INSERT INTO artisan_profiles (user_id, trade, bio, city) VALUES (?,?,?,?)"
-    ).run(userId, trade, bio || "", city);
+      "INSERT INTO artisan_profiles (user_id, trade, bio, city, country, state) VALUES (?,?,?,?,?,?)"
+    ).run(userId, trade, bio || "", city, country, state || null);
   }
 
   const token = jwt.sign({ id: userId, role, name }, SECRET, { expiresIn: "7d" });

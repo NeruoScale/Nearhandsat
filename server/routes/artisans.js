@@ -6,18 +6,20 @@ const { isOnline } = require("../presence");
 
 const router = express.Router();
 
-// GET /api/artisans?category=&city=&minRating=&sort=&limit=&offset=
+// GET /api/artisans?category=&city=&country=&state=&minRating=&sort=&limit=&offset=
 router.get("/", (req, res) => {
-  const { category, city, minRating, q } = req.query;
+  const { category, city, country, state, minRating, q } = req.query;
   let rows = db
     .prepare(
-      `SELECT u.id, u.name, p.trade, p.city, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received
+      `SELECT u.id, u.name, p.trade, p.city, p.country, p.state, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received
        FROM artisan_profiles p JOIN users u ON u.id = p.user_id`
     )
     .all();
 
   if (category && category !== "All") rows = rows.filter((r) => r.trade === category);
   if (city && city !== "All") rows = rows.filter((r) => r.city === city);
+  if (country) rows = rows.filter((r) => r.country === country);
+  if (state) rows = rows.filter((r) => r.state === state);
   if (minRating) rows = rows.filter((r) => r.avg_rating >= parseFloat(minRating));
   if (q) {
     const needle = q.toLowerCase();
@@ -49,7 +51,7 @@ router.get("/:id", (req, res) => {
   const id = parseInt(req.params.id, 10);
   const profile = db
     .prepare(
-      `SELECT u.id, u.name, p.trade, p.city, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received,
+      `SELECT u.id, u.name, p.trade, p.city, p.country, p.state, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received,
         p.service_radius_km, u.last_seen_at
        FROM artisan_profiles p JOIN users u ON u.id = p.user_id WHERE u.id = ?`
     )

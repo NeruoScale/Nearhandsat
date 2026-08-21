@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { ArrowLeft, MapPin, Star, CheckCircle2, MessageCircle, Send, X } from "lucide-react";
 import { api } from "../api";
-import { ICONS, Tag, Gauge, Modal } from "../components/Shared";
+import { ICONS, Tag, Gauge, Modal, formatLocation } from "../components/Shared";
 import { useLeadThread } from "../hooks/useLeadThread";
 
 function formatRelative(sqlDatetime) {
@@ -176,7 +176,7 @@ export default function Profile({ artisanId, onBack, user }) {
         <div style={{ flex: 1, minWidth: 200 }}>
           <div className="display" style={{ fontSize: 26, color: "var(--navy)", fontWeight: 600 }}>{artisan.name}</div>
           <div style={{ fontSize: 13, color: "var(--steel)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
-            <MapPin size={12} />{artisan.city} · {artisan.trade}
+            <MapPin size={12} />{formatLocation(artisan)} · {artisan.trade}
             {artisan.service_radius_km ? ` · travels up to ${artisan.service_radius_km}km` : ""}
           </div>
           <div style={{ fontSize: 12, color: artisan.online ? "var(--green)" : "var(--steel)", display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>

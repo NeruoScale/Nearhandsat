@@ -2,11 +2,13 @@ import React, { useState } from "react";
 import { api, setToken } from "../api";
 import { TRADES } from "../constants/trades";
 import TradeCombobox from "../components/TradeCombobox";
+import LocationPicker from "../components/LocationPicker";
 
 export default function Auth({ onAuth, initialMode = "login", initialRole = "client" }) {
   const [mode, setMode] = useState(initialMode);
   const [role, setRole] = useState(initialRole);
   const [form, setForm] = useState({ name: "", email: "", password: "", city: "", trade: TRADES[0], bio: "" });
+  const [location, setLocation] = useState({ country: "", state: "", city: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -25,10 +27,14 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
     }
     setBusy(true);
     try {
+      const payload =
+        role === "artisan"
+          ? { ...form, role, city: location.city, country: location.country, state: location.state }
+          : { ...form, role };
       const res =
         mode === "login"
           ? await api.login({ email: form.email, password: form.password })
-          : await api.register({ ...form, role });
+          : await api.register(payload);
       setToken(res.token);
       onAuth(res.user, res.token);
     } catch (err) {
@@ -80,11 +86,14 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
         )}
         <input className="input" placeholder="Email" value={form.email} onChange={set("email")} style={{ marginBottom: 10 }} />
         <input className="input" type="password" placeholder="Password" value={form.password} onChange={set("password")} style={{ marginBottom: 10 }} />
-        {mode === "register" && (
+        {mode === "register" && role === "client" && (
           <input className="input" placeholder="City" value={form.city} onChange={set("city")} style={{ marginBottom: 10 }} />
         )}
         {mode === "register" && role === "artisan" && (
           <>
+            <div style={{ marginBottom: 10 }}>
+              <LocationPicker value={location} onChange={setLocation} />
+            </div>
             <div style={{ marginBottom: 10 }}>
               <TradeCombobox value={form.trade} onChange={(v) => setForm({ ...form, trade: v })} placeholder="Trade" />
             </div>

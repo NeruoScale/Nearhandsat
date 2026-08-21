@@ -103,6 +103,9 @@ ensureColumn("artisan_profiles", "latitude", "REAL");
 ensureColumn("artisan_profiles", "longitude", "REAL");
 ensureColumn("artisan_profiles", "service_radius_km", "INTEGER");
 
+ensureColumn("artisan_profiles", "country", "TEXT");
+ensureColumn("artisan_profiles", "state", "TEXT");
+
 // --- Seed data (only if empty) ---
 const userCount = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
 if (userCount === 0) {
@@ -195,5 +198,9 @@ if (userCount === 0) {
 
   console.log("Seeded database with demo users (password for all: password123)");
 }
+
+// All current seed/demo data is Algeria-based -- don't leave any row (seeded
+// just now, or pre-existing from before this migration) with a blank country.
+db.prepare("UPDATE artisan_profiles SET country = 'Algeria' WHERE country IS NULL").run();
 
 module.exports = db;

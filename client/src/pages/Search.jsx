@@ -3,14 +3,15 @@ import { Search as SearchIcon, Users, X } from "lucide-react";
 import { api } from "../api";
 import { WorkTag } from "../components/Shared";
 import TradeCombobox from "../components/TradeCombobox";
+import LocationPicker from "../components/LocationPicker";
 
-const CITIES = ["All", "Setif", "El Eulma"];
 const PAGE_SIZE = 20;
+const EMPTY_LOCATION = { country: "", state: "", city: "" };
 
 export default function Search({ onSelect }) {
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
-  const [city, setCity] = useState("All");
+  const [location, setLocation] = useState(EMPTY_LOCATION);
   const [minRating, setMinRating] = useState(0);
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -21,7 +22,9 @@ export default function Search({ onSelect }) {
     const params = { limit: PAGE_SIZE, offset };
     if (q) params.q = q;
     if (category) params.category = category;
-    if (city !== "All") params.city = city;
+    if (location.country) params.country = location.country;
+    if (location.state) params.state = location.state;
+    if (location.city) params.city = location.city;
     if (minRating) params.minRating = minRating;
     return params;
   }
@@ -38,7 +41,7 @@ export default function Search({ onSelect }) {
         .finally(() => setLoading(false));
     }, 250);
     return () => clearTimeout(t);
-  }, [q, category, city, minRating]);
+  }, [q, category, location, minRating]);
 
   async function loadMore() {
     setLoadingMore(true);
@@ -76,9 +79,22 @@ export default function Search({ onSelect }) {
             </button>
           )}
         </div>
-        <select className="input" style={{ width: "auto" }} value={city} onChange={(e) => setCity(e.target.value)}>
-          {CITIES.map((c) => <option key={c}>{c}</option>)}
-        </select>
+        <div style={{ display: "flex", gap: 6, alignItems: "flex-start", width: 260 }}>
+          <div style={{ flex: 1 }}>
+            <LocationPicker value={location} onChange={setLocation} />
+          </div>
+          {(location.country || location.state || location.city) && (
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ padding: "9px 10px", flexShrink: 0 }}
+              onClick={() => setLocation(EMPTY_LOCATION)}
+              title="Clear location — all locations"
+            >
+              <X size={13} />
+            </button>
+          )}
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--steel)" }}>
           Min rating
           <input type="range" min="0" max="5" step="0.5" value={minRating} onChange={(e) => setMinRating(parseFloat(e.target.value))} />
