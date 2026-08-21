@@ -1,0 +1,9 @@
+{
+  "name": "nearhandsat",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npm install --no-save --prefix client && npm run build --prefix client && npm install --no-save --prefix server",
+    "start": "node server/index.js"
+  }
+}
