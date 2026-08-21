@@ -76,6 +76,14 @@ CREATE TABLE IF NOT EXISTS billing_settings (
   subscription_price REAL DEFAULT 15.0,
   UNIQUE(city, category)
 );
+
+CREATE INDEX IF NOT EXISTS idx_leads_artisan ON leads(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_leads_client ON leads(client_id);
+CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
+CREATE INDEX IF NOT EXISTS idx_portfolio_artisan ON portfolio_items(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_artisan ON reviews(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_lead ON reviews(lead_id);
+CREATE INDEX IF NOT EXISTS idx_messages_lead ON messages(lead_id);
 `);
 
 // Adds a column to an existing table if it isn't already there, so schema
