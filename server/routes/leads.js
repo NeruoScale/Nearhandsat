@@ -35,7 +35,8 @@ router.get("/mine", requireAuth, (req, res) => {
   const col = req.user.role === "artisan" ? "artisan_id" : "client_id";
   const rows = db
     .prepare(
-      `SELECT l.*, c.name AS client_name, a.name AS artisan_name
+      `SELECT l.*, c.name AS client_name, a.name AS artisan_name,
+        (SELECT content FROM messages WHERE lead_id = l.id ORDER BY created_at ASC LIMIT 1) AS first_message
        FROM leads l
        JOIN users c ON c.id = l.client_id
        JOIN users a ON a.id = l.artisan_id

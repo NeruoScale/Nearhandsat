@@ -1,22 +1,115 @@
 import React, { useEffect, useState } from "react";
-import { TrendingUp, Award, Plus } from "lucide-react";
+import { TrendingUp, Award, Plus, ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
 
 const STATUS_TONE = { contacted: "steel", hired: "amber", completed: "green", not_hired: "steel" };
 const STATUS_LABEL = { contacted: "Contacted", hired: "Hired", completed: "Completed", not_hired: "Not hired" };
 
+function truncate(str, n) {
+  if (!str) return "";
+  return str.length > n ? str.slice(0, n) + "…" : str;
+}
+
+function formatDate(sqlDatetime) {
+  if (!sqlDatetime) return "";
+  const d = new Date(sqlDatetime.replace(" ", "T") + "Z");
+  if (Number.isNaN(d.getTime())) return sqlDatetime;
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function RequestRow({ lead, user, expanded, onToggle, thread, threadLoading, onSelfReport }) {
+  return (
+    <div className="card" style={{ padding: 14 }}>
+      <div
+        onClick={onToggle}
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, cursor: "pointer", flexWrap: "wrap" }}
+      >
+        <div style={{ flex: "1 1 220px", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 600, color: "var(--navy)", fontSize: 14 }}>{lead.client_name}</span>
+            <Tag tone={STATUS_TONE[lead.status]}>{STATUS_LABEL[lead.status]}</Tag>
+          </div>
+          <div style={{ fontSize: 12.5, color: "var(--steel)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {truncate(lead.first_message, 60)}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--steel)", marginTop: 4 }}>Requested {formatDate(lead.created_at)}</div>
+        </div>
+        {expanded ? <ChevronUp size={16} color="var(--steel)" /> : <ChevronDown size={16} color="var(--steel)" />}
+      </div>
+
+      {expanded && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+          {threadLoading ? (
+            <div style={{ fontSize: 12.5, color: "var(--steel)" }}>Loading conversation…</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 240, overflowY: "auto" }}>
+              {(thread || []).map((m) => (
+                <div
+                  key={m.id}
+                  style={{
+                    alignSelf: m.sender_id === user.id ? "flex-end" : "flex-start",
+                    background: m.sender_id === user.id ? "var(--navy)" : "var(--chalk)",
+                    color: m.sender_id === user.id ? "var(--chalk)" : "#1A1A17",
+                    border: m.sender_id === user.id ? "none" : "1px solid var(--line)",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    maxWidth: "85%",
+                  }}
+                >
+                  {m.content}
+                </div>
+              ))}
+              {(thread || []).length === 0 && <div style={{ fontSize: 12.5, color: "var(--steel)" }}>No messages.</div>}
+            </div>
+          )}
+
+          {lead.status === "contacted" && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, color: "var(--steel)", marginBottom: 8, lineHeight: 1.5 }}>
+                If the client hasn't confirmed after a few days, you can self-report the outcome. Unusual patterns get reviewed for fairness.
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); onSelfReport(lead.id, "hired"); }}>I GOT THIS JOB</button>
+                <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); onSelfReport(lead.id, "not_hired"); }}>DIDN'T GET IT</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ArtisanDashboard({ user }) {
   const [leads, setLeads] = useState([]);
   const [profile, setProfile] = useState(null);
   const [portfolioForm, setPortfolioForm] = useState({ label: "", note: "" });
   const [pfError, setPfError] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
+  const [threads, setThreads] = useState({});
+  const [threadLoadingId, setThreadLoadingId] = useState(null);
 
   function load() {
     api.myLeads().then(setLeads);
     api.getArtisan(user.id).then(setProfile);
   }
   useEffect(load, [user.id]);
+
+  async function toggleExpand(lead) {
+    if (expandedId === lead.id) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(lead.id);
+    if (!threads[lead.id]) {
+      setThreadLoadingId(lead.id);
+      const thread = await api.leadMessages(lead.id);
+      setThreads((t) => ({ ...t, [lead.id]: thread.messages }));
+      setThreadLoadingId(null);
+    }
+  }
 
   async function selfReport(id, outcome) {
     await api.selfReport(id, outcome);
@@ -39,7 +132,6 @@ export default function ArtisanDashboard({ user }) {
 
   const ratio = profile.leads_received ? Math.round((profile.jobs_completed / profile.leads_received) * 100) : 0;
   const belowMinLeads = profile.leads_received < 10;
-  const pendingConfirmation = leads.filter((l) => l.status === "contacted");
 
   return (
     <div>
@@ -85,40 +177,21 @@ export default function ArtisanDashboard({ user }) {
         </div>
       </div>
 
-      {pendingConfirmation.length > 0 && (
-        <>
-          <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-            AWAITING CLIENT CONFIRMATION
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
-            {pendingConfirmation.map((l) => (
-              <div key={l.id} className="card" style={{ padding: 14 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: 14 }}>{l.client_name}</div>
-                  <Tag>{STATUS_LABEL[l.status]}</Tag>
-                </div>
-                <div style={{ fontSize: 12, color: "var(--steel)", marginTop: 6, lineHeight: 1.5 }}>
-                  If the client hasn't confirmed after a few days, you can self-report the outcome. Unusual patterns get reviewed for fairness.
-                </div>
-                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                  <button className="btn-secondary" onClick={() => selfReport(l.id, "hired")}>I GOT THIS JOB</button>
-                  <button className="btn-secondary" onClick={() => selfReport(l.id, "not_hired")}>DIDN'T GET IT</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-        ALL LEADS
+        YOUR REQUESTS
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
         {leads.map((l) => (
-          <div key={l.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-            <span>{l.client_name}</span>
-            <Tag tone={STATUS_TONE[l.status]}>{STATUS_LABEL[l.status]}</Tag>
-          </div>
+          <RequestRow
+            key={l.id}
+            lead={l}
+            user={user}
+            expanded={expandedId === l.id}
+            onToggle={() => toggleExpand(l)}
+            thread={threads[l.id]}
+            threadLoading={threadLoadingId === l.id}
+            onSelfReport={selfReport}
+          />
         ))}
         {leads.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No leads yet.</div>}
       </div>
