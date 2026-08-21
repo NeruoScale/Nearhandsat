@@ -2,6 +2,7 @@ const express = require("express");
 const db = require("../db");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const { rankingScore, conversionRatio } = require("../utils/ranking");
+const { isOnline } = require("../presence");
 
 const router = express.Router();
 
@@ -43,11 +44,12 @@ router.get("/:id", (req, res) => {
   const id = parseInt(req.params.id, 10);
   const profile = db
     .prepare(
-      `SELECT u.id, u.name, p.trade, p.city, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received
+      `SELECT u.id, u.name, p.trade, p.city, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received, u.last_seen_at
        FROM artisan_profiles p JOIN users u ON u.id = p.user_id WHERE u.id = ?`
     )
     .get(id);
   if (!profile) return res.status(404).json({ error: "Profile not found." });
+  profile.online = isOnline(id);
 
   const portfolio = db
     .prepare("SELECT id, label, note FROM portfolio_items WHERE artisan_id = ? AND hidden = 0 ORDER BY id DESC")

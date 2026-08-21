@@ -7,6 +7,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const { SECRET } = require("./middleware/auth");
+const { markOnline, markOffline } = require("./presence");
 
 const db = require("./db"); // initializes + seeds sqlite db on first run
 
@@ -31,6 +32,8 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket) => {
+  markOnline(socket.user.id);
+
   // Each lead conversation is a room; only its two participants may join.
   socket.on("lead:join", (leadId) => {
     const lead = db.prepare("SELECT * FROM leads WHERE id = ?").get(leadId);
@@ -41,6 +44,11 @@ io.on("connection", (socket) => {
 
   socket.on("lead:leave", (leadId) => {
     socket.leave(`lead:${leadId}`);
+  });
+
+  socket.on("disconnect", () => {
+    markOffline(socket.user.id);
+    db.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").run(socket.user.id);
   });
 });
 

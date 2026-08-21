@@ -4,6 +4,18 @@ import { api } from "../api";
 import { ICONS, Tag, Gauge, Modal } from "../components/Shared";
 import { useLeadThread } from "../hooks/useLeadThread";
 
+function formatRelative(sqlDatetime) {
+  if (!sqlDatetime) return null;
+  const then = new Date(sqlDatetime.replace(" ", "T") + "Z").getTime();
+  const mins = Math.floor((Date.now() - then) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
 function ContactFlow({ artisan, user, onClose, onHired }) {
   const [leadId, setLeadId] = useState(null);
   const [draft, setDraft] = useState("");
@@ -165,6 +177,16 @@ export default function Profile({ artisanId, onBack, user }) {
           <div className="display" style={{ fontSize: 26, color: "var(--navy)", fontWeight: 600 }}>{artisan.name}</div>
           <div style={{ fontSize: 13, color: "var(--steel)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
             <MapPin size={12} />{artisan.city} · {artisan.trade}
+          </div>
+          <div style={{ fontSize: 12, color: artisan.online ? "var(--green)" : "var(--steel)", display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
+            {artisan.online ? (
+              <>
+                <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
+                Online now
+              </>
+            ) : (
+              <span>{artisan.last_seen_at ? `Last seen ${formatRelative(artisan.last_seen_at)}` : "Offline"}</span>
+            )}
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
             <Tag tone="amber"><Star size={10} style={{ verticalAlign: -1, marginRight: 3 }} />{Number(artisan.avg_rating).toFixed(1)} ({artisan.review_count} reviews)</Tag>

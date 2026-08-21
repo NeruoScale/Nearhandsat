@@ -90,6 +90,7 @@ function ensureColumn(table, column, definition) {
 
 ensureColumn("portfolio_items", "hidden", "INTEGER DEFAULT 0");
 ensureColumn("portfolio_items", "lead_id", "INTEGER REFERENCES leads(id)");
+ensureColumn("users", "last_seen_at", "TEXT");
 
 // --- Seed data (only if empty) ---
 const userCount = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
