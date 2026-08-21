@@ -2,14 +2,15 @@ import React, { useEffect, useState } from "react";
 import { ArrowLeft, MapPin, Star, CheckCircle2, MessageCircle, Send, X } from "lucide-react";
 import { api } from "../api";
 import { ICONS, Tag, Gauge, Modal } from "../components/Shared";
+import { useLeadThread } from "../hooks/useLeadThread";
 
-function ContactFlow({ artisan, onClose, onHired }) {
+function ContactFlow({ artisan, user, onClose, onHired }) {
   const [leadId, setLeadId] = useState(null);
-  const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [hired, setHired] = useState(false);
+  const { messages, send } = useLeadThread(leadId);
 
   async function sendFirst() {
     if (!draft.trim()) {
@@ -21,8 +22,6 @@ function ContactFlow({ artisan, onClose, onHired }) {
     try {
       const res = await api.createLead({ artisanId: artisan.id, message: draft });
       setLeadId(res.id);
-      const thread = await api.leadMessages(res.id);
-      setMessages(thread.messages);
       setDraft("");
     } catch (err) {
       setError(err.message);
@@ -35,9 +34,7 @@ function ContactFlow({ artisan, onClose, onHired }) {
     if (!draft.trim()) return;
     setBusy(true);
     try {
-      await api.sendMessage(leadId, draft);
-      const thread = await api.leadMessages(leadId);
-      setMessages(thread.messages);
+      await send(draft);
       setDraft("");
     } catch (err) {
       setError(err.message);
@@ -100,22 +97,26 @@ function ContactFlow({ artisan, onClose, onHired }) {
       <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none" }}><X size={18} color="var(--steel)" /></button>
       <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>Conversation</div>
       <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10, maxHeight: 220, overflowY: "auto" }}>
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            style={{
-              alignSelf: "flex-end",
-              background: "var(--navy)",
-              color: "var(--chalk)",
-              padding: "8px 12px",
-              borderRadius: "8px 8px 2px 8px",
-              fontSize: 13,
-              maxWidth: "80%",
-            }}
-          >
-            {m.content}
-          </div>
-        ))}
+        {messages.map((m) => {
+          const mine = m.sender_id === user.id;
+          return (
+            <div
+              key={m.id}
+              style={{
+                alignSelf: mine ? "flex-end" : "flex-start",
+                background: mine ? "var(--navy)" : "var(--chalk)",
+                color: mine ? "var(--chalk)" : "#1A1A17",
+                border: mine ? "none" : "1px solid var(--line)",
+                padding: "8px 12px",
+                borderRadius: mine ? "8px 8px 2px 8px" : "8px 8px 8px 2px",
+                fontSize: 13,
+                maxWidth: "80%",
+              }}
+            >
+              {m.content}
+            </div>
+          );
+        })}
       </div>
       <textarea
         className="input"
@@ -137,7 +138,7 @@ function ContactFlow({ artisan, onClose, onHired }) {
   );
 }
 
-export default function Profile({ artisanId, onBack }) {
+export default function Profile({ artisanId, onBack, user }) {
   const [artisan, setArtisan] = useState(null);
   const [contacting, setContacting] = useState(false);
 
@@ -216,7 +217,7 @@ export default function Profile({ artisanId, onBack }) {
 
       {contacting && (
         <Modal onClose={() => setContacting(false)}>
-          <ContactFlow artisan={artisan} onClose={() => setContacting(false)} onHired={() => api.getArtisan(artisanId).then(setArtisan)} />
+          <ContactFlow artisan={artisan} user={user} onClose={() => setContacting(false)} onHired={() => api.getArtisan(artisanId).then(setArtisan)} />
         </Modal>
       )}
     </div>

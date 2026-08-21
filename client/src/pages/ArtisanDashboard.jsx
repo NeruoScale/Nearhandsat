@@ -3,6 +3,7 @@ import { TrendingUp, Award, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
 import PortfolioManager from "../components/PortfolioManager";
+import { useLeadThread } from "../hooks/useLeadThread";
 
 const STATUS_TONE = { contacted: "steel", hired: "amber", completed: "green", not_hired: "steel" };
 const STATUS_LABEL = { contacted: "Contacted", hired: "Hired", completed: "Completed", not_hired: "Not hired" };
@@ -19,7 +20,8 @@ function formatDate(sqlDatetime) {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-function RequestRow({ lead, user, expanded, onToggle, thread, threadLoading, onSelfReport }) {
+function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
+  const { messages: thread, loading: threadLoading } = useLeadThread(expanded ? lead.id : null);
   return (
     <div className="card" style={{ padding: 14 }}>
       <div
@@ -87,8 +89,6 @@ export default function ArtisanDashboard({ user }) {
   const [leads, setLeads] = useState([]);
   const [profile, setProfile] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-  const [threads, setThreads] = useState({});
-  const [threadLoadingId, setThreadLoadingId] = useState(null);
 
   function load() {
     api.myLeads().then(setLeads);
@@ -96,18 +96,8 @@ export default function ArtisanDashboard({ user }) {
   }
   useEffect(load, [user.id]);
 
-  async function toggleExpand(lead) {
-    if (expandedId === lead.id) {
-      setExpandedId(null);
-      return;
-    }
-    setExpandedId(lead.id);
-    if (!threads[lead.id]) {
-      setThreadLoadingId(lead.id);
-      const thread = await api.leadMessages(lead.id);
-      setThreads((t) => ({ ...t, [lead.id]: thread.messages }));
-      setThreadLoadingId(null);
-    }
+  function toggleExpand(lead) {
+    setExpandedId(expandedId === lead.id ? null : lead.id);
   }
 
   async function selfReport(id, outcome) {
@@ -175,8 +165,6 @@ export default function ArtisanDashboard({ user }) {
             user={user}
             expanded={expandedId === l.id}
             onToggle={() => toggleExpand(l)}
-            thread={threads[l.id]}
-            threadLoading={threadLoadingId === l.id}
             onSelfReport={selfReport}
           />
         ))}

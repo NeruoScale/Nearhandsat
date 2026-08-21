@@ -73,11 +73,13 @@ router.post("/:id/messages", requireAuth, (req, res) => {
   if (!assertParticipant(req, res, lead)) return;
   const { content } = req.body || {};
   if (!content) return res.status(400).json({ error: "Message can't be empty." });
-  db.prepare("INSERT INTO messages (lead_id, sender_id, content) VALUES (?,?,?)").run(
+  const info = db.prepare("INSERT INTO messages (lead_id, sender_id, content) VALUES (?,?,?)").run(
     req.params.id,
     req.user.id,
     content
   );
+  const message = db.prepare("SELECT * FROM messages WHERE id = ?").get(info.lastInsertRowid);
+  req.app.get("io").to(`lead:${req.params.id}`).emit("lead:message", message);
   res.status(201).json({ ok: true });
 });
 

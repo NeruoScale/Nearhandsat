@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Wrench, LogOut } from "lucide-react";
 import { setToken } from "./api";
+import { connectSocket, disconnectSocket } from "./socket";
 import Auth from "./pages/Auth";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
@@ -16,10 +17,12 @@ export default function App() {
   function onAuth(u, token) {
     setUser(u);
     setToken(token);
+    connectSocket();
     setTab(u.role === "admin" ? "admin" : u.role === "artisan" ? "dashboard" : "search");
   }
 
   function signOut() {
+    disconnectSocket();
     setUser(null);
     setToken(null);
     setSelectedArtisan(null);
@@ -77,7 +80,7 @@ export default function App() {
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 20px 60px" }}>
         {tab === "search" && !selectedArtisan && <Search onSelect={setSelectedArtisan} />}
         {tab === "search" && selectedArtisan && (
-          <Profile artisanId={selectedArtisan} onBack={() => setSelectedArtisan(null)} />
+          <Profile artisanId={selectedArtisan} onBack={() => setSelectedArtisan(null)} user={user} />
         )}
         {tab === "leads" && <MyLeads />}
         {tab === "dashboard" && <ArtisanDashboard user={user} />}
