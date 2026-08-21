@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const compression = require("compression");
 const fs = require("fs");
 const path = require("path");
 const http = require("http");
@@ -12,6 +13,7 @@ const { markOnline, markOffline } = require("./presence");
 const db = require("./db"); // initializes + seeds sqlite db on first run
 
 const app = express();
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 
