@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { api, setToken } from "../api";
-
-const TRADES = ["Electrician", "Plumber", "Carpenter", "Painter"];
+import { TRADES } from "../constants/trades";
+import TradeCombobox from "../components/TradeCombobox";
 
 export default function Auth({ onAuth, initialMode = "login", initialRole = "client" }) {
   const [mode, setMode] = useState(initialMode);
@@ -85,9 +85,9 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
         )}
         {mode === "register" && role === "artisan" && (
           <>
-            <select className="input" value={form.trade} onChange={set("trade")} style={{ marginBottom: 10 }}>
-              {TRADES.map((t) => <option key={t}>{t}</option>)}
-            </select>
+            <div style={{ marginBottom: 10 }}>
+              <TradeCombobox value={form.trade} onChange={(v) => setForm({ ...form, trade: v })} placeholder="Trade" />
+            </div>
             <textarea className="input" placeholder="Short bio — what you do and your experience" value={form.bio} onChange={set("bio")} style={{ marginBottom: 10, minHeight: 70, resize: "vertical" }} />
           </>
         )}

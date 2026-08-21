@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Search as SearchIcon, Users } from "lucide-react";
+import { Search as SearchIcon, Users, X } from "lucide-react";
 import { api } from "../api";
 import { WorkTag } from "../components/Shared";
+import TradeCombobox from "../components/TradeCombobox";
 
-const TRADES = ["All", "Electrician", "Plumber", "Carpenter", "Painter"];
 const CITIES = ["All", "Setif", "El Eulma"];
 const PAGE_SIZE = 20;
 
 export default function Search({ onSelect }) {
   const [q, setQ] = useState("");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState("");
   const [city, setCity] = useState("All");
   const [minRating, setMinRating] = useState(0);
   const [rows, setRows] = useState([]);
@@ -20,7 +20,7 @@ export default function Search({ onSelect }) {
   function buildParams(offset) {
     const params = { limit: PAGE_SIZE, offset };
     if (q) params.q = q;
-    if (category !== "All") params.category = category;
+    if (category) params.category = category;
     if (city !== "All") params.city = city;
     if (minRating) params.minRating = minRating;
     return params;
@@ -66,9 +66,16 @@ export default function Search({ onSelect }) {
       </div>
 
       <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}>
-        <select className="input" style={{ width: "auto" }} value={category} onChange={(e) => setCategory(e.target.value)}>
-          {TRADES.map((t) => <option key={t}>{t}</option>)}
-        </select>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", width: 200 }}>
+          <div style={{ flex: 1 }}>
+            <TradeCombobox value={category} onChange={setCategory} placeholder="All categories" />
+          </div>
+          {category && (
+            <button type="button" className="btn-secondary" style={{ padding: "9px 10px", flexShrink: 0 }} onClick={() => setCategory("")} title="Clear category">
+              <X size={13} />
+            </button>
+          )}
+        </div>
         <select className="input" style={{ width: "auto" }} value={city} onChange={(e) => setCity(e.target.value)}>
           {CITIES.map((c) => <option key={c}>{c}</option>)}
         </select>
