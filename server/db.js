@@ -78,6 +78,19 @@ CREATE TABLE IF NOT EXISTS billing_settings (
 );
 `);
 
+// Adds a column to an existing table if it isn't already there, so schema
+// changes apply cleanly to a database that was created by an older version
+// of this file without needing a separate migration runner.
+function ensureColumn(table, column, definition) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+ensureColumn("portfolio_items", "hidden", "INTEGER DEFAULT 0");
+ensureColumn("portfolio_items", "lead_id", "INTEGER REFERENCES leads(id)");
+
 // --- Seed data (only if empty) ---
 const userCount = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
 if (userCount === 0) {

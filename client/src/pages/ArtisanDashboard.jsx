@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { TrendingUp, Award, Plus, ChevronDown, ChevronUp } from "lucide-react";
+import { TrendingUp, Award, ChevronDown, ChevronUp } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
+import PortfolioManager from "../components/PortfolioManager";
 
 const STATUS_TONE = { contacted: "steel", hired: "amber", completed: "green", not_hired: "steel" };
 const STATUS_LABEL = { contacted: "Contacted", hired: "Hired", completed: "Completed", not_hired: "Not hired" };
@@ -85,8 +86,6 @@ function RequestRow({ lead, user, expanded, onToggle, thread, threadLoading, onS
 export default function ArtisanDashboard({ user }) {
   const [leads, setLeads] = useState([]);
   const [profile, setProfile] = useState(null);
-  const [portfolioForm, setPortfolioForm] = useState({ label: "", note: "" });
-  const [pfError, setPfError] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [threads, setThreads] = useState({});
   const [threadLoadingId, setThreadLoadingId] = useState(null);
@@ -113,18 +112,6 @@ export default function ArtisanDashboard({ user }) {
 
   async function selfReport(id, outcome) {
     await api.selfReport(id, outcome);
-    load();
-  }
-
-  async function addPortfolio(e) {
-    e.preventDefault();
-    if (!portfolioForm.label.trim()) {
-      setPfError("Give this piece of work a title.");
-      return;
-    }
-    await api.addPortfolioItem(portfolioForm);
-    setPortfolioForm({ label: "", note: "" });
-    setPfError("");
     load();
   }
 
@@ -197,21 +184,9 @@ export default function ArtisanDashboard({ user }) {
       </div>
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-        ADD PAST WORK
+        YOUR PORTFOLIO
       </div>
-      <form onSubmit={addPortfolio} style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input className="input" style={{ flex: "1 1 160px" }} placeholder="Job title" value={portfolioForm.label} onChange={(e) => setPortfolioForm({ ...portfolioForm, label: e.target.value })} />
-        <input className="input" style={{ flex: "1 1 160px" }} placeholder="Short note" value={portfolioForm.note} onChange={(e) => setPortfolioForm({ ...portfolioForm, note: e.target.value })} />
-        <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }}><Plus size={14} /> ADD</button>
-      </form>
-      {pfError && <div className="error-text">{pfError}</div>}
-      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 12 }}>
-        {profile.portfolio.map((p) => (
-          <div key={p.id} style={{ fontSize: 13, color: "#3C3A33" }}>
-            <strong style={{ color: "var(--navy)" }}>{p.label}</strong> — {p.note}
-          </div>
-        ))}
-      </div>
+      <PortfolioManager />
     </div>
   );
 }

@@ -50,7 +50,7 @@ router.get("/:id", (req, res) => {
   if (!profile) return res.status(404).json({ error: "Profile not found." });
 
   const portfolio = db
-    .prepare("SELECT id, label, note FROM portfolio_items WHERE artisan_id = ? ORDER BY id DESC")
+    .prepare("SELECT id, label, note FROM portfolio_items WHERE artisan_id = ? AND hidden = 0 ORDER BY id DESC")
     .all(id);
   const reviews = db
     .prepare(
@@ -84,6 +84,63 @@ router.post("/me/portfolio", requireAuth, requireRole("artisan"), (req, res) => 
     .prepare("INSERT INTO portfolio_items (artisan_id, label, note) VALUES (?,?,?)")
     .run(req.user.id, label, note || "");
   res.status(201).json({ id: info.lastInsertRowid, label, note: note || "" });
+});
+
+// Full portfolio for the owning artisan, including hidden items -- the
+// public GET /:id profile above excludes hidden ones, so the dashboard
+// needs its own view to let the artisan manage (and un-hide) everything.
+router.get("/me/portfolio", requireAuth, requireRole("artisan"), (req, res) => {
+  const items = db
+    .prepare("SELECT id, label, note, hidden, lead_id FROM portfolio_items WHERE artisan_id = ? ORDER BY id DESC")
+    .all(req.user.id);
+  res.json(items);
+});
+
+router.put("/me/portfolio/:id", requireAuth, requireRole("artisan"), (req, res) => {
+  const item = db
+    .prepare("SELECT * FROM portfolio_items WHERE id = ? AND artisan_id = ?")
+    .get(req.params.id, req.user.id);
+  if (!item) return res.status(404).json({ error: "Portfolio item not found." });
+
+  const { label, note } = req.body || {};
+  if (label !== undefined && !label.trim()) {
+    return res.status(400).json({ error: "Give this piece of work a title." });
+  }
+  db.prepare("UPDATE portfolio_items SET label = COALESCE(?, label), note = COALESCE(?, note) WHERE id = ?").run(
+    label,
+    note,
+    item.id
+  );
+  res.json({ ok: true });
+});
+
+// Toggle hidden. Freeform items (no lead_id) are purely cosmetic. Items
+// linked to a confirmed job (lead_id set) move jobs_completed and, since
+// ranking_score is derived rather than stored, the recomputed score comes
+// back in the response so the UI can reflect the impact immediately.
+router.put("/me/portfolio/:id/hide", requireAuth, requireRole("artisan"), (req, res) => {
+  const item = db
+    .prepare("SELECT * FROM portfolio_items WHERE id = ? AND artisan_id = ?")
+    .get(req.params.id, req.user.id);
+  if (!item) return res.status(404).json({ error: "Portfolio item not found." });
+
+  const nextHidden = item.hidden ? 0 : 1;
+  db.prepare("UPDATE portfolio_items SET hidden = ? WHERE id = ?").run(nextHidden, item.id);
+
+  let profile = db.prepare("SELECT * FROM artisan_profiles WHERE user_id = ?").get(req.user.id);
+  if (item.lead_id) {
+    const delta = nextHidden ? -1 : 1;
+    const nextJobs = Math.max(0, profile.jobs_completed + delta);
+    db.prepare("UPDATE artisan_profiles SET jobs_completed = ? WHERE user_id = ?").run(nextJobs, req.user.id);
+    profile = db.prepare("SELECT * FROM artisan_profiles WHERE user_id = ?").get(req.user.id);
+  }
+
+  res.json({
+    ok: true,
+    hidden: !!nextHidden,
+    jobs_completed: profile.jobs_completed,
+    ranking_score: rankingScore(profile),
+  });
 });
 
 module.exports = router;
