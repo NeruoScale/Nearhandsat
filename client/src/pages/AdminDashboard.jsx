@@ -3,17 +3,29 @@ import { AlertTriangle } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
 
+const FLAGGED_PAGE_SIZE = 25;
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
   const [flagged, setFlagged] = useState([]);
+  const [flaggedTotal, setFlaggedTotal] = useState(0);
   const [billing, setBilling] = useState([]);
 
   function load() {
     api.adminStats().then(setStats);
-    api.adminFlagged().then(setFlagged);
+    api.adminFlagged({ limit: FLAGGED_PAGE_SIZE, offset: 0 }).then((res) => {
+      setFlagged(res.results);
+      setFlaggedTotal(res.total);
+    });
     api.adminBilling().then(setBilling);
   }
   useEffect(load, []);
+
+  async function loadMoreFlagged() {
+    const res = await api.adminFlagged({ limit: FLAGGED_PAGE_SIZE, offset: flagged.length });
+    setFlagged((prev) => [...prev, ...res.results]);
+    setFlaggedTotal(res.total);
+  }
 
   async function togglePaid(row) {
     await api.updateBilling(row.id, { paid_mode: row.paid_mode ? 0 : 1 });
@@ -91,6 +103,11 @@ export default function AdminDashboard() {
         ))}
         {flagged.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>Nothing flagged right now.</div>}
       </div>
+      {flagged.length < flaggedTotal && (
+        <div style={{ textAlign: "center", marginTop: 12 }}>
+          <button className="btn-secondary" onClick={loadMoreFlagged}>LOAD MORE</button>
+        </div>
+      )}
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
         BILLING BY SEGMENT

@@ -6,7 +6,7 @@ const { isOnline } = require("../presence");
 
 const router = express.Router();
 
-// GET /api/artisans?category=&city=&minRating=&sort=
+// GET /api/artisans?category=&city=&minRating=&sort=&limit=&offset=
 router.get("/", (req, res) => {
   const { category, city, minRating, q } = req.query;
   let rows = db
@@ -37,7 +37,12 @@ router.get("/", (req, res) => {
 
   rows.sort((a, b) => b.ranking_score - a.ranking_score);
 
-  res.json(rows);
+  const total = rows.length;
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
+  const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+  const results = rows.slice(offset, offset + limit);
+
+  res.json({ results, total, limit, offset });
 });
 
 router.get("/:id", (req, res) => {

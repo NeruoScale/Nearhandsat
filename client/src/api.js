@@ -40,7 +40,7 @@ export const api = {
   completeLead: (id) => request(`/leads/${id}/complete`, { method: "POST" }),
   submitReview: (payload) => request("/reviews", { method: "POST", body: payload }),
   adminStats: () => request("/admin/stats"),
-  adminFlagged: () => request("/admin/flagged"),
+  adminFlagged: (params) => request(`/admin/flagged?${new URLSearchParams(params || {}).toString()}`),
   adminBilling: () => request("/admin/billing"),
   updateBilling: (id, payload) => request(`/admin/billing/${id}`, { method: "PUT", body: payload }),
 };

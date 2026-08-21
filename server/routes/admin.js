@@ -55,7 +55,12 @@ router.get("/flagged", (req, res) => {
     .filter((r) => r.ratio < 20)
     .sort((a, b) => a.ratio - b.ratio);
 
-  res.json(rows);
+  const total = rows.length;
+  const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 25));
+  const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
+  const results = rows.slice(offset, offset + limit);
+
+  res.json({ results, total, limit, offset });
 });
 
 router.get("/billing", (req, res) => {

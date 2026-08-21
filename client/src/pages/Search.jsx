@@ -5,6 +5,7 @@ import { WorkTag } from "../components/Shared";
 
 const TRADES = ["All", "Electrician", "Plumber", "Carpenter", "Painter"];
 const CITIES = ["All", "Setif", "El Eulma"];
+const PAGE_SIZE = 20;
 
 export default function Search({ onSelect }) {
   const [q, setQ] = useState("");
@@ -12,20 +13,43 @@ export default function Search({ onSelect }) {
   const [city, setCity] = useState("All");
   const [minRating, setMinRating] = useState(0);
   const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  useEffect(() => {
-    setLoading(true);
-    const params = {};
+  function buildParams(offset) {
+    const params = { limit: PAGE_SIZE, offset };
     if (q) params.q = q;
     if (category !== "All") params.category = category;
     if (city !== "All") params.city = city;
     if (minRating) params.minRating = minRating;
+    return params;
+  }
+
+  useEffect(() => {
+    setLoading(true);
     const t = setTimeout(() => {
-      api.searchArtisans(params).then(setRows).finally(() => setLoading(false));
+      api
+        .searchArtisans(buildParams(0))
+        .then((res) => {
+          setRows(res.results);
+          setTotal(res.total);
+        })
+        .finally(() => setLoading(false));
     }, 250);
     return () => clearTimeout(t);
   }, [q, category, city, minRating]);
+
+  async function loadMore() {
+    setLoadingMore(true);
+    try {
+      const res = await api.searchArtisans(buildParams(rows.length));
+      setRows((prev) => [...prev, ...res.results]);
+      setTotal(res.total);
+    } finally {
+      setLoadingMore(false);
+    }
+  }
 
   return (
     <div>
@@ -56,7 +80,7 @@ export default function Search({ onSelect }) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 16, color: "var(--steel)", fontSize: 12.5 }}>
-        <Users size={13} /> {loading ? "Searching…" : `${rows.length} pro${rows.length !== 1 ? "s" : ""} found`}
+        <Users size={13} /> {loading ? "Searching…" : `${rows.length} of ${total} pro${total !== 1 ? "s" : ""} found`}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14, marginTop: 12 }}>
@@ -64,6 +88,14 @@ export default function Search({ onSelect }) {
           <WorkTag key={a.id} artisan={a} onClick={() => onSelect(a.id)} />
         ))}
       </div>
+
+      {!loading && rows.length < total && (
+        <div style={{ textAlign: "center", marginTop: 20 }}>
+          <button className="btn-secondary" onClick={loadMore} disabled={loadingMore}>
+            {loadingMore ? "LOADING…" : "LOAD MORE"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
