@@ -1,0 +1,70 @@
+:root {
+  --navy: #1E2A45;
+  --navy-light: #2E3E5F;
+  --chalk: #F1EFE7;
+  --card: #FBFAF6;
+  --amber: #E0912E;
+  --amber-dark: #B36F1C;
+  --green: #3F7857;
+  --green-bg: #EAF0EA;
+  --steel: #6B6F76;
+  --line: #DAD6C9;
+  --danger: #B33A2E;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--chalk);
+  color: #1A1A17;
+  font-family: 'Inter', sans-serif;
+}
+
+.display { font-family: 'Oswald', sans-serif; }
+.mono { font-family: 'IBM Plex Mono', monospace; }
+
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+
+.btn-primary {
+  background: var(--amber);
+  color: #2A1B04;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 18px;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-size: 13px;
+}
+.btn-primary:disabled { background: var(--line); color: #8B8878; cursor: default; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--navy);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 16px;
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-size: 13px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.input {
+  padding: 9px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  font-size: 13px;
+  width: 100%;
+}
+
+.error-text { color: var(--danger); font-size: 12.5px; margin-top: 6px; }
