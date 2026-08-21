@@ -4,7 +4,7 @@ import { TRADES } from "../constants/trades";
 import TradeCombobox from "../components/TradeCombobox";
 import LocationPicker from "../components/LocationPicker";
 
-export default function Auth({ onAuth, initialMode = "login", initialRole = "client" }) {
+export default function Auth({ onAuth, initialMode = "login", initialRole = "client", compact = false }) {
   const [mode, setMode] = useState(initialMode);
   const [role, setRole] = useState(initialRole);
   const [form, setForm] = useState({ name: "", email: "", password: "", city: "", trade: TRADES[0], bio: "" });
@@ -45,13 +45,17 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
   }
 
   return (
-    <div style={{ maxWidth: 380, margin: "60px auto", padding: "0 20px" }}>
-      <div className="display" style={{ fontSize: 22, color: "var(--navy)", fontWeight: 600, textAlign: "center" }}>
-        NEARHANDS<span style={{ color: "var(--amber)" }}>AT</span>
-      </div>
-      <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--steel)", marginTop: 4, marginBottom: 24 }}>
-        Skilled hands, near you.
-      </div>
+    <div style={compact ? undefined : { maxWidth: 380, margin: "60px auto", padding: "0 20px" }}>
+      {!compact && (
+        <>
+          <div className="display" style={{ fontSize: 22, color: "var(--navy)", fontWeight: 600, textAlign: "center" }}>
+            NEARHANDS<span style={{ color: "var(--amber)" }}>AT</span>
+          </div>
+          <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--steel)", marginTop: 4, marginBottom: 24 }}>
+            Skilled hands, near you.
+          </div>
+        </>
+      )}
 
       <div style={{ display: "flex", gap: 4, background: "var(--card)", border: "1px solid var(--line)", borderRadius: 6, padding: 3, marginBottom: 20 }}>
         <button
@@ -106,10 +110,12 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
         </button>
       </form>
 
-      <div style={{ marginTop: 18, fontSize: 11.5, color: "var(--steel)", textAlign: "center", lineHeight: 1.6 }}>
-        Demo accounts (password: password123):<br />
-        client1@example.com · artisan1@example.com · admin@nearhandsat.com
-      </div>
+      {!compact && (
+        <div style={{ marginTop: 18, fontSize: 11.5, color: "var(--steel)", textAlign: "center", lineHeight: 1.6 }}>
+          Demo accounts (password: password123):<br />
+          client1@example.com · artisan1@example.com · admin@nearhandsat.com
+        </div>
+      )}
     </div>
   );
 }

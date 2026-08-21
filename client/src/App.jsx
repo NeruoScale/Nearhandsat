@@ -15,13 +15,31 @@ export default function App() {
   const [tab, setTab] = useState("search");
   const [selectedArtisan, setSelectedArtisan] = useState(null);
   const [showLanding, setShowLanding] = useState(true);
+  const [guestBrowsing, setGuestBrowsing] = useState(false);
   const [authIntent, setAuthIntent] = useState({ mode: "login", role: "client" });
 
   function onAuth(u, token) {
     setUser(u);
     setToken(token);
     connectSocket();
+    setGuestBrowsing(false);
     setTab(u.role === "admin" ? "admin" : u.role === "artisan" ? "dashboard" : "search");
+  }
+
+  // Used when a guest signs in mid-contact-flow (inline Auth inside the
+  // contact modal): updates the session but deliberately does NOT touch
+  // `tab` or `selectedArtisan` -- the guest should land back in the exact
+  // same Profile/contact modal they were already in, not get redirected.
+  function onGuestAuth(u, token) {
+    setUser(u);
+    setToken(token);
+    connectSocket();
+    setGuestBrowsing(false);
+  }
+
+  function promptAuth(mode, role) {
+    setAuthIntent({ mode, role });
+    setGuestBrowsing(false);
   }
 
   function signOut() {
@@ -29,20 +47,21 @@ export default function App() {
     setUser(null);
     setToken(null);
     setSelectedArtisan(null);
+    setGuestBrowsing(false);
     setShowLanding(true);
   }
 
   if (!user && showLanding) {
     return (
       <Landing
-        onBrowse={() => { setAuthIntent({ mode: "register", role: "client" }); setShowLanding(false); }}
+        onBrowse={() => { setGuestBrowsing(true); setShowLanding(false); }}
         onProfessional={() => { setAuthIntent({ mode: "register", role: "artisan" }); setShowLanding(false); }}
         onSignIn={() => { setAuthIntent({ mode: "login", role: "client" }); setShowLanding(false); }}
       />
     );
   }
 
-  if (!user) return <Auth onAuth={onAuth} initialMode={authIntent.mode} initialRole={authIntent.role} />;
+  if (!user && !guestBrowsing) return <Auth onAuth={onAuth} initialMode={authIntent.mode} initialRole={authIntent.role} />;
 
   const clientTabs = [
     ["search", "FIND A PRO"],
@@ -50,7 +69,8 @@ export default function App() {
   ];
   const artisanTabs = [["dashboard", "DASHBOARD"]];
   const adminTabs = [["admin", "ADMIN"]];
-  const tabs = user.role === "admin" ? adminTabs : user.role === "artisan" ? artisanTabs : clientTabs;
+  const guestTabs = [["search", "FIND A PRO"]];
+  const tabs = !user ? guestTabs : user.role === "admin" ? adminTabs : user.role === "artisan" ? artisanTabs : clientTabs;
 
   return (
     <div style={{ minHeight: "100vh" }}>
@@ -85,20 +105,26 @@ export default function App() {
               </button>
             ))}
           </div>
-          <button onClick={signOut} style={{ background: "none", border: "none", color: "#C7CEDD", display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-            <LogOut size={14} /> {user.name.split(" ")[0]}
-          </button>
+          {user ? (
+            <button onClick={signOut} style={{ background: "none", border: "none", color: "#C7CEDD", display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+              <LogOut size={14} /> {user.name.split(" ")[0]}
+            </button>
+          ) : (
+            <button onClick={() => promptAuth("login", "client")} style={{ background: "none", border: "none", color: "#C7CEDD", fontSize: 12 }}>
+              SIGN IN
+            </button>
+          )}
         </div>
       </div>
 
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 20px 60px" }}>
         {tab === "search" && !selectedArtisan && <Search onSelect={setSelectedArtisan} />}
         {tab === "search" && selectedArtisan && (
-          <Profile artisanId={selectedArtisan} onBack={() => setSelectedArtisan(null)} user={user} />
+          <Profile artisanId={selectedArtisan} onBack={() => setSelectedArtisan(null)} user={user} onGuestAuth={onGuestAuth} />
         )}
-        {tab === "leads" && <MyLeads />}
-        {tab === "dashboard" && <ArtisanDashboard user={user} />}
-        {tab === "admin" && <AdminDashboard />}
+        {tab === "leads" && user && <MyLeads />}
+        {tab === "dashboard" && user && <ArtisanDashboard user={user} />}
+        {tab === "admin" && user && <AdminDashboard />}
       </div>
     </div>
   );

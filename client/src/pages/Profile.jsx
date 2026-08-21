@@ -3,6 +3,7 @@ import { ArrowLeft, MapPin, Star, CheckCircle2, MessageCircle, Send, X } from "l
 import { api } from "../api";
 import { ICONS, Tag, Gauge, Modal, formatLocation } from "../components/Shared";
 import { useLeadThread } from "../hooks/useLeadThread";
+import Auth from "./Auth";
 
 function formatRelative(sqlDatetime) {
   if (!sqlDatetime) return null;
@@ -16,13 +17,31 @@ function formatRelative(sqlDatetime) {
   return `${days} day${days === 1 ? "" : "s"} ago`;
 }
 
-function ContactFlow({ artisan, user, onClose, onHired }) {
+function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
   const [leadId, setLeadId] = useState(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [hired, setHired] = useState(false);
   const { messages, send } = useLeadThread(leadId);
+
+  // Guests can browse and view profiles freely, but contacting a pro
+  // requires an account. Show sign-in/signup inline, right here in the
+  // modal -- on success `user` becomes truthy and this same component
+  // instance falls through to the normal compose flow below, so the
+  // visitor never loses their place or has to re-click Contact.
+  if (!user) {
+    return (
+      <div>
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none" }}><X size={18} color="var(--steel)" /></button>
+        <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>Sign in to message {artisan.name}</div>
+        <div style={{ fontSize: 12, color: "var(--steel)", marginTop: 4, marginBottom: 16, lineHeight: 1.5 }}>
+          Create a free account (or sign in) to contact professionals — you'll come right back here to send your message.
+        </div>
+        <Auth compact initialMode="register" initialRole="client" onAuth={onGuestAuth} />
+      </div>
+    );
+  }
 
   async function sendFirst() {
     if (!draft.trim()) {
@@ -150,7 +169,7 @@ function ContactFlow({ artisan, user, onClose, onHired }) {
   );
 }
 
-export default function Profile({ artisanId, onBack, user }) {
+export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
   const [artisan, setArtisan] = useState(null);
   const [contacting, setContacting] = useState(false);
 
@@ -240,7 +259,7 @@ export default function Profile({ artisanId, onBack, user }) {
 
       {contacting && (
         <Modal onClose={() => setContacting(false)}>
-          <ContactFlow artisan={artisan} user={user} onClose={() => setContacting(false)} onHired={() => api.getArtisan(artisanId).then(setArtisan)} />
+          <ContactFlow artisan={artisan} user={user} onGuestAuth={onGuestAuth} onClose={() => setContacting(false)} onHired={() => api.getArtisan(artisanId).then(setArtisan)} />
         </Modal>
       )}
     </div>
