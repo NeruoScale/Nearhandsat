@@ -1,8 +1,60 @@
-import React from "react";
-import { Wrench, Search, Star, MessageCircle, CheckCircle2, UserPlus, Image, Users, TrendingUp } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { Wrench, Search, Star, MessageCircle, CheckCircle2, UserPlus, Image, Users, TrendingUp, Download, X } from "lucide-react";
 import { useLanguage, translations } from "../i18n";
 
 const LANGS = Object.keys(translations);
+
+function InstallBanner() {
+  const [installEvent, setInstallEvent] = useState(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    function onBeforeInstallPrompt(e) {
+      e.preventDefault();
+      setInstallEvent(e);
+    }
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+  }, []);
+
+  if (!installEvent || dismissed) return null;
+
+  async function install() {
+    installEvent.prompt();
+    await installEvent.userChoice;
+    setInstallEvent(null);
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        bottom: 16,
+        insetInlineStart: "50%",
+        transform: "translateX(-50%)",
+        zIndex: 15,
+        background: "var(--navy)",
+        color: "var(--chalk)",
+        borderRadius: 8,
+        padding: "10px 10px 10px 16px",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        fontSize: 12.5,
+        boxShadow: "0 6px 20px rgba(0,0,0,0.25)",
+        maxWidth: "calc(100vw - 32px)",
+      }}
+    >
+      <span>Install NearHandsAT for quick access</span>
+      <button onClick={install} className="btn-primary" style={{ padding: "6px 12px", fontSize: 11, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+        <Download size={12} /> INSTALL
+      </button>
+      <button onClick={() => setDismissed(true)} style={{ background: "none", border: "none", color: "var(--chalk)", cursor: "pointer", display: "flex", flexShrink: 0, padding: 2 }}>
+        <X size={14} />
+      </button>
+    </div>
+  );
+}
 
 function LanguageSwitcher() {
   const { lang, setLang } = useLanguage();
@@ -82,6 +134,7 @@ export default function Landing({ onBrowse, onProfessional, onSignIn }) {
   return (
     <div style={{ minHeight: "100vh" }}>
       <LanguageSwitcher />
+      <InstallBanner />
 
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "80px 20px 60px", textAlign: "center" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 18 }}>
