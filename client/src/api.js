@@ -30,6 +30,7 @@ export const api = {
   myPortfolio: () => request("/artisans/me/portfolio"),
   updatePortfolioItem: (id, payload) => request(`/artisans/me/portfolio/${id}`, { method: "PUT", body: payload }),
   hidePortfolioItem: (id) => request(`/artisans/me/portfolio/${id}/hide`, { method: "PUT" }),
+  updateProfile: (payload) => request("/artisans/me", { method: "PUT", body: payload }),
   createLead: (payload) => request("/leads", { method: "POST", body: payload }),
   myLeads: () => request("/leads/mine"),
   leadMessages: (id) => request(`/leads/${id}/messages`),

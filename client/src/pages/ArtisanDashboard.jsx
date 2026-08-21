@@ -3,6 +3,7 @@ import { TrendingUp, Award, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
 import PortfolioManager from "../components/PortfolioManager";
+import LocationManager from "../components/LocationManager";
 import { useLeadThread } from "../hooks/useLeadThread";
 
 const STATUS_TONE = { contacted: "steel", hired: "amber", completed: "green", not_hired: "steel" };
@@ -152,6 +153,13 @@ export default function ArtisanDashboard({ user }) {
             NearHandsAT is free in {profile.city} while we build up demand. Active pros get first pick of pricing when billing turns on here.
           </div>
         </div>
+      </div>
+
+      <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
+        LOCATION & SERVICE AREA
+      </div>
+      <div style={{ marginTop: 14 }}>
+        <LocationManager profile={profile} onSaved={load} />
       </div>
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>

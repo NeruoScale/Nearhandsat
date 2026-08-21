@@ -177,6 +177,7 @@ export default function Profile({ artisanId, onBack, user }) {
           <div className="display" style={{ fontSize: 26, color: "var(--navy)", fontWeight: 600 }}>{artisan.name}</div>
           <div style={{ fontSize: 13, color: "var(--steel)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
             <MapPin size={12} />{artisan.city} · {artisan.trade}
+            {artisan.service_radius_km ? ` · travels up to ${artisan.service_radius_km}km` : ""}
           </div>
           <div style={{ fontSize: 12, color: artisan.online ? "var(--green)" : "var(--steel)", display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
             {artisan.online ? (

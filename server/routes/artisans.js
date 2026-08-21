@@ -44,7 +44,8 @@ router.get("/:id", (req, res) => {
   const id = parseInt(req.params.id, 10);
   const profile = db
     .prepare(
-      `SELECT u.id, u.name, p.trade, p.city, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received, u.last_seen_at
+      `SELECT u.id, u.name, p.trade, p.city, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received,
+        p.service_radius_km, u.last_seen_at
        FROM artisan_profiles p JOIN users u ON u.id = p.user_id WHERE u.id = ?`
     )
     .get(id);
@@ -72,10 +73,17 @@ router.get("/:id", (req, res) => {
 });
 
 router.put("/me", requireAuth, requireRole("artisan"), (req, res) => {
-  const { bio, city, trade } = req.body || {};
+  const { bio, city, trade, latitude, longitude, service_radius_km } = req.body || {};
   db.prepare(
-    "UPDATE artisan_profiles SET bio = COALESCE(?, bio), city = COALESCE(?, city), trade = COALESCE(?, trade) WHERE user_id = ?"
-  ).run(bio, city, trade, req.user.id);
+    `UPDATE artisan_profiles SET
+      bio = COALESCE(?, bio),
+      city = COALESCE(?, city),
+      trade = COALESCE(?, trade),
+      latitude = COALESCE(?, latitude),
+      longitude = COALESCE(?, longitude),
+      service_radius_km = COALESCE(?, service_radius_km)
+     WHERE user_id = ?`
+  ).run(bio, city, trade, latitude, longitude, service_radius_km, req.user.id);
   res.json({ ok: true });
 });
 
