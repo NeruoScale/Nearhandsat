@@ -68,3 +68,11 @@ input, select, textarea { font-family: inherit; }
 }
 
 .error-text { color: var(--danger); font-size: 12.5px; margin-top: 6px; }
+
+/* RTL support (currently only exercised by Landing.jsx). Most layout in this app is
+   flexbox/grid with flex-start/flex-end and logical CSS properties (inset-inline-start,
+   margin-inline, etc. in Landing.jsx), which mirror automatically under dir="rtl" --
+   this is a safety net for anything that doesn't. */
+[dir="rtl"] {
+  text-align: start;
+}

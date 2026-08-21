@@ -3,9 +3,9 @@ import { api, setToken } from "../api";
 
 const TRADES = ["Electrician", "Plumber", "Carpenter", "Painter"];
 
-export default function Auth({ onAuth }) {
-  const [mode, setMode] = useState("login");
-  const [role, setRole] = useState("client");
+export default function Auth({ onAuth, initialMode = "login", initialRole = "client" }) {
+  const [mode, setMode] = useState(initialMode);
+  const [role, setRole] = useState(initialRole);
   const [form, setForm] = useState({ name: "", email: "", password: "", city: "", trade: TRADES[0], bio: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

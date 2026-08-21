@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Wrench, LogOut } from "lucide-react";
 import { setToken } from "./api";
 import { connectSocket, disconnectSocket } from "./socket";
+import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Search from "./pages/Search";
 import Profile from "./pages/Profile";
@@ -13,6 +14,8 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("search");
   const [selectedArtisan, setSelectedArtisan] = useState(null);
+  const [showLanding, setShowLanding] = useState(true);
+  const [authIntent, setAuthIntent] = useState({ mode: "login", role: "client" });
 
   function onAuth(u, token) {
     setUser(u);
@@ -26,9 +29,20 @@ export default function App() {
     setUser(null);
     setToken(null);
     setSelectedArtisan(null);
+    setShowLanding(true);
   }
 
-  if (!user) return <Auth onAuth={onAuth} />;
+  if (!user && showLanding) {
+    return (
+      <Landing
+        onBrowse={() => { setAuthIntent({ mode: "register", role: "client" }); setShowLanding(false); }}
+        onProfessional={() => { setAuthIntent({ mode: "register", role: "artisan" }); setShowLanding(false); }}
+        onSignIn={() => { setAuthIntent({ mode: "login", role: "client" }); setShowLanding(false); }}
+      />
+    );
+  }
+
+  if (!user) return <Auth onAuth={onAuth} initialMode={authIntent.mode} initialRole={authIntent.role} />;
 
   const clientTabs = [
     ["search", "FIND A PRO"],
