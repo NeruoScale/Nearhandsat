@@ -1,9 +1,20 @@
+import { translations, STORAGE_KEY } from "./i18n";
+
 let token = null;
 export function setToken(t) {
   token = t;
 }
 export function getToken() {
   return token;
+}
+
+function currentTranslations() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return translations[stored] || translations.en;
+  } catch {
+    return translations.en;
+  }
 }
 
 async function request(path, options = {}) {
@@ -17,7 +28,7 @@ async function request(path, options = {}) {
     body: options.body ? JSON.stringify(options.body) : undefined,
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Something went wrong.");
+  if (!res.ok) throw new Error(data.error || currentTranslations().common.somethingWentWrong);
   return data;
 }
 

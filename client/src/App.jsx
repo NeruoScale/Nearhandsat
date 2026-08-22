@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Wrench, LogOut } from "lucide-react";
 import { setToken } from "./api";
 import { connectSocket, disconnectSocket } from "./socket";
+import { useLanguage } from "./i18n";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Search from "./pages/Search";
@@ -11,6 +12,7 @@ import ArtisanDashboard from "./pages/ArtisanDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 
 export default function App() {
+  const { t } = useLanguage();
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("search");
   const [selectedArtisan, setSelectedArtisan] = useState(null);
@@ -64,12 +66,12 @@ export default function App() {
   if (!user && !guestBrowsing) return <Auth onAuth={onAuth} initialMode={authIntent.mode} initialRole={authIntent.role} />;
 
   const clientTabs = [
-    ["search", "FIND A PRO"],
-    ["leads", "YOUR REQUESTS"],
+    ["search", t.nav.findAPro],
+    ["leads", t.nav.yourRequests],
   ];
-  const artisanTabs = [["dashboard", "DASHBOARD"]];
-  const adminTabs = [["admin", "ADMIN"]];
-  const guestTabs = [["search", "FIND A PRO"]];
+  const artisanTabs = [["dashboard", t.nav.dashboard]];
+  const adminTabs = [["admin", t.nav.admin]];
+  const guestTabs = [["search", t.nav.findAPro]];
   const tabs = !user ? guestTabs : user.role === "admin" ? adminTabs : user.role === "artisan" ? artisanTabs : clientTabs;
 
   return (
@@ -111,7 +113,7 @@ export default function App() {
             </button>
           ) : (
             <button onClick={() => promptAuth("login", "client")} style={{ background: "none", border: "none", color: "#C7CEDD", fontSize: 12 }}>
-              SIGN IN
+              {t.signIn.toUpperCase()}
             </button>
           )}
         </div>

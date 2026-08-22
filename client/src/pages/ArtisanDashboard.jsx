@@ -5,9 +5,9 @@ import { Tag } from "../components/Shared";
 import PortfolioManager from "../components/PortfolioManager";
 import LocationManager from "../components/LocationManager";
 import { useLeadThread } from "../hooks/useLeadThread";
+import { useLanguage } from "../i18n";
 
 const STATUS_TONE = { contacted: "steel", hired: "amber", completed: "green", not_hired: "steel" };
-const STATUS_LABEL = { contacted: "Contacted", hired: "Hired", completed: "Completed", not_hired: "Not hired" };
 
 function truncate(str, n) {
   if (!str) return "";
@@ -22,6 +22,7 @@ function formatDate(sqlDatetime) {
 }
 
 function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
+  const { t } = useLanguage();
   const { messages: thread, loading: threadLoading } = useLeadThread(expanded ? lead.id : null);
   return (
     <div className="card" style={{ padding: 14 }}>
@@ -32,12 +33,12 @@ function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
         <div style={{ flex: "1 1 220px", minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span style={{ fontWeight: 600, color: "var(--navy)", fontSize: 14 }}>{lead.client_name}</span>
-            <Tag tone={STATUS_TONE[lead.status]}>{STATUS_LABEL[lead.status]}</Tag>
+            <Tag tone={STATUS_TONE[lead.status]}>{t.common.status[lead.status]}</Tag>
           </div>
           <div style={{ fontSize: 12.5, color: "var(--steel)", marginTop: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {truncate(lead.first_message, 60)}
           </div>
-          <div style={{ fontSize: 11, color: "var(--steel)", marginTop: 4 }}>Requested {formatDate(lead.created_at)}</div>
+          <div style={{ fontSize: 11, color: "var(--steel)", marginTop: 4 }}>{t.dashboard.requestRow.requested(formatDate(lead.created_at))}</div>
         </div>
         {expanded ? <ChevronUp size={16} color="var(--steel)" /> : <ChevronDown size={16} color="var(--steel)" />}
       </div>
@@ -45,7 +46,7 @@ function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
       {expanded && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
           {threadLoading ? (
-            <div style={{ fontSize: 12.5, color: "var(--steel)" }}>Loading conversation…</div>
+            <div style={{ fontSize: 12.5, color: "var(--steel)" }}>{t.dashboard.requestRow.loadingConversation}</div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 240, overflowY: "auto" }}>
               {(thread || []).map((m) => (
@@ -65,18 +66,18 @@ function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
                   {m.content}
                 </div>
               ))}
-              {(thread || []).length === 0 && <div style={{ fontSize: 12.5, color: "var(--steel)" }}>No messages.</div>}
+              {(thread || []).length === 0 && <div style={{ fontSize: 12.5, color: "var(--steel)" }}>{t.dashboard.requestRow.noMessages}</div>}
             </div>
           )}
 
           {lead.status === "contacted" && (
             <div style={{ marginTop: 12 }}>
               <div style={{ fontSize: 12, color: "var(--steel)", marginBottom: 8, lineHeight: 1.5 }}>
-                If the client hasn't confirmed after a few days, you can self-report the outcome. Unusual patterns get reviewed for fairness.
+                {t.dashboard.requestRow.selfReportDesc}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); onSelfReport(lead.id, "hired"); }}>I GOT THIS JOB</button>
-                <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); onSelfReport(lead.id, "not_hired"); }}>DIDN'T GET IT</button>
+                <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); onSelfReport(lead.id, "hired"); }}>{t.dashboard.requestRow.gotJob}</button>
+                <button className="btn-secondary" onClick={(e) => { e.stopPropagation(); onSelfReport(lead.id, "not_hired"); }}>{t.dashboard.requestRow.didntGetIt}</button>
               </div>
             </div>
           )}
@@ -87,6 +88,7 @@ function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
 }
 
 export default function ArtisanDashboard({ user }) {
+  const { t } = useLanguage();
   const [leads, setLeads] = useState([]);
   const [profile, setProfile] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
@@ -106,27 +108,27 @@ export default function ArtisanDashboard({ user }) {
     load();
   }
 
-  if (!profile) return <div style={{ padding: 40, textAlign: "center", color: "var(--steel)" }}>Loading…</div>;
+  if (!profile) return <div style={{ padding: 40, textAlign: "center", color: "var(--steel)" }}>{t.common.loading}</div>;
 
   const ratio = profile.leads_received ? Math.round((profile.jobs_completed / profile.leads_received) * 100) : 0;
   const belowMinLeads = profile.leads_received < 10;
 
   return (
     <div>
-      <div className="display" style={{ fontSize: 22, color: "var(--navy)", fontWeight: 600 }}>Your dashboard</div>
-      <div style={{ fontSize: 13, color: "var(--steel)", marginTop: 2 }}>{profile.name} — {profile.trade}, {profile.city}</div>
+      <div className="display" style={{ fontSize: 22, color: "var(--navy)", fontWeight: 600 }}>{t.dashboard.title}</div>
+      <div style={{ fontSize: 13, color: "var(--steel)", marginTop: 2 }}>{t.dashboard.subtitle(profile.name, profile.trade, profile.city)}</div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginTop: 22 }}>
         <div className="card" style={{ padding: 16 }}>
-          <div style={{ fontSize: 11, color: "var(--steel)", letterSpacing: 0.5 }}>LEADS RECEIVED</div>
+          <div style={{ fontSize: 11, color: "var(--steel)", letterSpacing: 0.5 }}>{t.dashboard.leadsReceived}</div>
           <div className="mono" style={{ fontSize: 26, color: "var(--navy)", marginTop: 4 }}>{profile.leads_received}</div>
         </div>
         <div className="card" style={{ padding: 16 }}>
-          <div style={{ fontSize: 11, color: "var(--steel)", letterSpacing: 0.5 }}>CONFIRMED HIRES</div>
+          <div style={{ fontSize: 11, color: "var(--steel)", letterSpacing: 0.5 }}>{t.dashboard.confirmedHires}</div>
           <div className="mono" style={{ fontSize: 26, color: "var(--green)", marginTop: 4 }}>{profile.jobs_completed}</div>
         </div>
         <div className="card" style={{ padding: 16 }}>
-          <div style={{ fontSize: 11, color: "var(--steel)", letterSpacing: 0.5 }}>CONVERSION</div>
+          <div style={{ fontSize: 11, color: "var(--steel)", letterSpacing: 0.5 }}>{t.dashboard.conversion}</div>
           <div className="mono" style={{ fontSize: 26, color: "var(--amber-dark)", marginTop: 4 }}>{ratio}%</div>
         </div>
       </div>
@@ -135,12 +137,12 @@ export default function ArtisanDashboard({ user }) {
         <TrendingUp size={20} color="var(--green)" style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
           <div className="display" style={{ fontSize: 14, color: "var(--green)", fontWeight: 600 }}>
-            {belowMinLeads ? "Building your ranking" : "Ranking status"}
+            {belowMinLeads ? t.dashboard.buildingRanking : t.dashboard.rankingStatus}
           </div>
           <div style={{ fontSize: 12.5, color: "#2E4A38", marginTop: 4, lineHeight: 1.5 }}>
             {belowMinLeads
-              ? "New profiles rank on rating and jobs done alone until you've received 10 leads — your conversion rate isn't held against you yet."
-              : `Confirming hires as they happen keeps you near the top of search in ${profile.city}. Your ${ratio}% conversion rate factors directly into your ranking.`}
+              ? t.dashboard.buildingRankingDesc
+              : t.dashboard.rankingStatusDesc(profile.city, ratio)}
           </div>
         </div>
       </div>
@@ -148,22 +150,22 @@ export default function ArtisanDashboard({ user }) {
       <div style={{ marginTop: 16, background: "#FBEBD4", border: "1px solid var(--amber)", borderRadius: 8, padding: 16, display: "flex", gap: 12 }}>
         <Award size={20} color="var(--amber-dark)" style={{ flexShrink: 0, marginTop: 2 }} />
         <div>
-          <div className="display" style={{ fontSize: 14, color: "var(--amber-dark)", fontWeight: 600 }}>Phase 1 — free for now</div>
+          <div className="display" style={{ fontSize: 14, color: "var(--amber-dark)", fontWeight: 600 }}>{t.dashboard.freeForNow}</div>
           <div style={{ fontSize: 12.5, color: "#5C4213", marginTop: 4, lineHeight: 1.5 }}>
-            NearHandsAT is free in {profile.city} while we build up demand. Active pros get first pick of pricing when billing turns on here.
+            {t.dashboard.freeForNowDesc(profile.city)}
           </div>
         </div>
       </div>
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-        LOCATION & SERVICE AREA
+        {t.dashboard.locationServiceArea}
       </div>
       <div style={{ marginTop: 14 }}>
         <LocationManager profile={profile} onSaved={load} />
       </div>
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-        YOUR REQUESTS
+        {t.dashboard.yourRequests}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 14 }}>
         {leads.map((l) => (
@@ -176,11 +178,11 @@ export default function ArtisanDashboard({ user }) {
             onSelfReport={selfReport}
           />
         ))}
-        {leads.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No leads yet.</div>}
+        {leads.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>{t.dashboard.noLeads}</div>}
       </div>
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-        YOUR REVIEWS
+        {t.dashboard.yourReviews}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
         {profile.reviews.map((r) => (
@@ -197,11 +199,11 @@ export default function ArtisanDashboard({ user }) {
             <div style={{ fontSize: 13, color: "#3C3A33", marginTop: 3 }}>{r.comment}</div>
           </div>
         ))}
-        {profile.reviews.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No reviews yet.</div>}
+        {profile.reviews.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>{t.dashboard.noReviews}</div>}
       </div>
 
       <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
-        YOUR PORTFOLIO
+        {t.dashboard.yourPortfolio}
       </div>
       <PortfolioManager />
     </div>

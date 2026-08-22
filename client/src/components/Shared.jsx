@@ -1,5 +1,6 @@
 import React from "react";
 import { Star, CheckCircle2, MapPin, Zap, Wrench, Hammer, PaintBucket } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 export const ICONS = { Electrician: Zap, Plumber: Wrench, Carpenter: Hammer, Painter: PaintBucket };
 
@@ -33,6 +34,7 @@ export function Tag({ children, tone = "steel" }) {
 }
 
 export function Gauge({ value, max = 100, size = 84 }) {
+  const { t } = useLanguage();
   const pct = Math.min(1, max ? value / max : 0);
   const r = size / 2 - 8;
   const c = 2 * Math.PI * r;
@@ -55,13 +57,14 @@ export function Gauge({ value, max = 100, size = 84 }) {
         {value}
       </text>
       <text x="50%" y="64%" textAnchor="middle" className="mono" fontSize="8" fill="var(--steel)" letterSpacing="1">
-        JOBS
+        {t.shared.jobsLabel}
       </text>
     </svg>
   );
 }
 
 export function WorkTag({ artisan, onClick }) {
+  const { t } = useLanguage();
   const Icon = ICONS[artisan.trade] || Hammer;
   const ratio =
     artisan.conversion_ratio !== null && artisan.conversion_ratio !== undefined
@@ -126,7 +129,7 @@ export function WorkTag({ artisan, onClick }) {
           >
             <CheckCircle2 size={11} color="var(--green)" />
             <span className="display" style={{ fontSize: 10, color: "var(--green)", fontWeight: 600 }}>
-              VERIFIED
+              {t.profile.verified.toUpperCase()}
             </span>
           </div>
         )}
@@ -136,7 +139,7 @@ export function WorkTag({ artisan, onClick }) {
           <Star size={10} style={{ verticalAlign: -1, marginRight: 3 }} />
           {Number(artisan.avg_rating).toFixed(1)}
         </Tag>
-        <Tag>{artisan.jobs_completed} jobs done</Tag>
+        <Tag>{artisan.jobs_completed} {t.shared.jobsDone}</Tag>
         {ratio !== null && <Tag tone={ratio >= 60 ? "green" : "steel"}>{ratio}% convert</Tag>}
       </div>
       <div style={{ marginTop: 12, fontSize: 13, color: "#3C3A33", lineHeight: 1.5 }}>{artisan.bio}</div>

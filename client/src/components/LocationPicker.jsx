@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
 import SearchableSelect from "./SearchableSelect";
+import { useLanguage } from "../i18n";
 
 // The country/state/city dataset is several MB uncompressed -- loaded via a
 // dynamic import inside this component only, so it never lands in the main
-// app bundle (guests browsing the app never download it).
+// app bundle (guests browsing the app never download it). Note: the place
+// names themselves come from that dataset in their original (English) form
+// and are not translated -- only this component's own UI chrome is.
 export default function LocationPicker({ value, onChange }) {
+  const { t } = useLanguage();
   const [csc, setCsc] = useState(null);
   const [countries, setCountries] = useState([]);
   const [states, setStates] = useState([]);
@@ -87,7 +91,7 @@ export default function LocationPicker({ value, onChange }) {
   }
 
   if (!csc) {
-    return <div className="input" style={{ color: "var(--steel)", fontSize: 13 }}>Loading locations…</div>;
+    return <div className="input" style={{ color: "var(--steel)", fontSize: 13 }}>{t.location.loadingLocations}</div>;
   }
 
   return (
@@ -96,7 +100,7 @@ export default function LocationPicker({ value, onChange }) {
         value={value.country || ""}
         onChange={(v) => set("country", v)}
         options={countries.map((c) => c.name)}
-        placeholder="Country"
+        placeholder={t.location.countryPlaceholder}
       />
 
       {stateSupported ? (
@@ -104,13 +108,13 @@ export default function LocationPicker({ value, onChange }) {
           value={value.state || ""}
           onChange={(v) => set("state", v)}
           options={states.map((s) => s.name)}
-          placeholder="State / region"
+          placeholder={t.location.statePlaceholder}
           disabled={!value.country}
         />
       ) : (
         <input
           className="input"
-          placeholder="State / region"
+          placeholder={t.location.statePlaceholder}
           value={value.state || ""}
           onChange={(e) => set("state", e.target.value)}
           disabled={!value.country}
@@ -122,7 +126,7 @@ export default function LocationPicker({ value, onChange }) {
           value={value.city || ""}
           onChange={(v) => set("city", v)}
           options={cities.map((c) => c.name)}
-          placeholder="City (type at least 2 letters)"
+          placeholder={t.location.cityPickerPlaceholder}
           minChars={2}
           maxResults={50}
           disabled={!value.country}
@@ -130,7 +134,7 @@ export default function LocationPicker({ value, onChange }) {
       ) : (
         <input
           className="input"
-          placeholder="City"
+          placeholder={t.location.citySimplePlaceholder}
           value={value.city || ""}
           onChange={(e) => set("city", e.target.value)}
           disabled={!value.country}

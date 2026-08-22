@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 import { api, setToken } from "../api";
 import { TRADES } from "../constants/trades";
+import { useLanguage } from "../i18n";
 import TradeCombobox from "../components/TradeCombobox";
 import LocationPicker from "../components/LocationPicker";
 
 export default function Auth({ onAuth, initialMode = "login", initialRole = "client", compact = false, lockRole = null }) {
+  const { t } = useLanguage();
   const [mode, setMode] = useState(initialMode);
   const [role, setRole] = useState(lockRole || initialRole);
   const [form, setForm] = useState({ name: "", email: "", password: "", city: "", trade: TRADES[0], bio: "" });
@@ -18,11 +20,11 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
     e.preventDefault();
     setError("");
     if (!form.email.trim() || !form.password.trim()) {
-      setError("Enter an email and password.");
+      setError(t.auth.enterEmailPassword);
       return;
     }
     if (mode === "register" && !form.name.trim()) {
-      setError("Enter your name.");
+      setError(t.auth.enterName);
       return;
     }
     setBusy(true);
@@ -52,7 +54,7 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
             NEARHANDS<span style={{ color: "var(--amber)" }}>AT</span>
           </div>
           <div style={{ textAlign: "center", fontSize: 12.5, color: "var(--steel)", marginTop: 4, marginBottom: 24 }}>
-            Skilled hands, near you.
+            {t.hero.tagline}
           </div>
         </>
       )}
@@ -63,14 +65,14 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
           className="display"
           style={{ flex: 1, padding: "8px 0", borderRadius: 5, border: "none", fontSize: 12, fontWeight: 600, background: mode === "login" ? "var(--navy)" : "transparent", color: mode === "login" ? "var(--chalk)" : "var(--steel)" }}
         >
-          SIGN IN
+          {t.auth.signInTab}
         </button>
         <button
           onClick={() => setMode("register")}
           className="display"
           style={{ flex: 1, padding: "8px 0", borderRadius: 5, border: "none", fontSize: 12, fontWeight: 600, background: mode === "register" ? "var(--navy)" : "transparent", color: mode === "register" ? "var(--chalk)" : "var(--steel)" }}
         >
-          CREATE ACCOUNT
+          {t.auth.createAccountTab}
         </button>
       </div>
 
@@ -80,20 +82,20 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
             {!lockRole && (
               <div style={{ display: "flex", gap: 4, marginBottom: 10 }}>
                 <button type="button" onClick={() => setRole("client")} className="btn-secondary" style={{ flex: 1, background: role === "client" ? "var(--chalk)" : "transparent", borderColor: role === "client" ? "var(--navy)" : "var(--line)" }}>
-                  I NEED WORK DONE
+                  {t.auth.iNeedWorkDone}
                 </button>
                 <button type="button" onClick={() => setRole("artisan")} className="btn-secondary" style={{ flex: 1, background: role === "artisan" ? "var(--chalk)" : "transparent", borderColor: role === "artisan" ? "var(--navy)" : "var(--line)" }}>
-                  I DO THE WORK
+                  {t.auth.iDoTheWork}
                 </button>
               </div>
             )}
-            <input className="input" placeholder="Full name" value={form.name} onChange={set("name")} style={{ marginBottom: 10 }} />
+            <input className="input" placeholder={t.auth.fullName} value={form.name} onChange={set("name")} style={{ marginBottom: 10 }} />
           </>
         )}
-        <input className="input" placeholder="Email" value={form.email} onChange={set("email")} style={{ marginBottom: 10 }} />
-        <input className="input" type="password" placeholder="Password" value={form.password} onChange={set("password")} style={{ marginBottom: 10 }} />
+        <input className="input" placeholder={t.auth.email} value={form.email} onChange={set("email")} style={{ marginBottom: 10 }} />
+        <input className="input" type="password" placeholder={t.auth.password} value={form.password} onChange={set("password")} style={{ marginBottom: 10 }} />
         {mode === "register" && role === "client" && (
-          <input className="input" placeholder="City" value={form.city} onChange={set("city")} style={{ marginBottom: 10 }} />
+          <input className="input" placeholder={t.auth.city} value={form.city} onChange={set("city")} style={{ marginBottom: 10 }} />
         )}
         {mode === "register" && role === "artisan" && (
           <>
@@ -101,20 +103,20 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
               <LocationPicker value={location} onChange={setLocation} />
             </div>
             <div style={{ marginBottom: 10 }}>
-              <TradeCombobox value={form.trade} onChange={(v) => setForm({ ...form, trade: v })} placeholder="Trade" />
+              <TradeCombobox value={form.trade} onChange={(v) => setForm({ ...form, trade: v })} placeholder={t.auth.trade} />
             </div>
-            <textarea className="input" placeholder="Short bio — what you do and your experience" value={form.bio} onChange={set("bio")} style={{ marginBottom: 10, minHeight: 70, resize: "vertical" }} />
+            <textarea className="input" placeholder={t.auth.bio} value={form.bio} onChange={set("bio")} style={{ marginBottom: 10, minHeight: 70, resize: "vertical" }} />
           </>
         )}
         {error && <div className="error-text">{error}</div>}
         <button className="btn-primary" style={{ width: "100%", marginTop: 6, padding: "11px 0" }} disabled={busy}>
-          {mode === "login" ? "SIGN IN" : "CREATE ACCOUNT"}
+          {mode === "login" ? t.auth.signInTab : t.auth.createAccountTab}
         </button>
       </form>
 
       {!compact && (
         <div style={{ marginTop: 18, fontSize: 11.5, color: "var(--steel)", textAlign: "center", lineHeight: 1.6 }}>
-          Demo accounts (password: password123):<br />
+          {t.auth.demoAccounts}<br />
           client1@example.com · artisan1@example.com · admin@nearhandsat.com
         </div>
       )}

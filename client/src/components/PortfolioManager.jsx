@@ -2,8 +2,10 @@ import React, { useEffect, useState } from "react";
 import { Plus, Pencil, EyeOff, Eye, Check, X as XIcon, AlertTriangle } from "lucide-react";
 import { api } from "../api";
 import { Tag, Modal } from "./Shared";
+import { useLanguage } from "../i18n";
 
 export default function PortfolioManager() {
+  const { t } = useLanguage();
   const [items, setItems] = useState([]);
   const [form, setForm] = useState({ label: "", note: "" });
   const [formError, setFormError] = useState("");
@@ -20,7 +22,7 @@ export default function PortfolioManager() {
   async function addItem(e) {
     e.preventDefault();
     if (!form.label.trim()) {
-      setFormError("Give this piece of work a title.");
+      setFormError(t.portfolio.giveTitle);
       return;
     }
     await api.addPortfolioItem(form);
@@ -46,7 +48,7 @@ export default function PortfolioManager() {
     if (item.lead_id) {
       const wasHidden = !!item.hidden;
       const before = wasHidden ? res.jobs_completed - 1 : res.jobs_completed + 1;
-      setBanner(`Job count updated: ${before} → ${res.jobs_completed}`);
+      setBanner(t.portfolio.jobCountUpdated(before, res.jobs_completed));
     }
     setConfirmItem(null);
     load();
@@ -87,9 +89,9 @@ export default function PortfolioManager() {
       )}
 
       <form onSubmit={addItem} style={{ marginTop: 14, display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <input className="input" style={{ flex: "1 1 160px" }} placeholder="Job title" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-        <input className="input" style={{ flex: "1 1 160px" }} placeholder="Short note" value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
-        <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }}><Plus size={14} /> ADD</button>
+        <input className="input" style={{ flex: "1 1 160px" }} placeholder={t.portfolio.titlePlaceholder} value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+        <input className="input" style={{ flex: "1 1 160px" }} placeholder={t.portfolio.notePlaceholder} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+        <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 6 }}><Plus size={14} /> {t.portfolio.add}</button>
       </form>
       {formError && <div className="error-text">{formError}</div>}
 
@@ -100,29 +102,29 @@ export default function PortfolioManager() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 <input className="input" style={{ flex: "1 1 140px" }} value={editForm.label} onChange={(e) => setEditForm({ ...editForm, label: e.target.value })} />
                 <input className="input" style={{ flex: "1 1 140px" }} value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} />
-                <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={() => saveEdit(p.id)}><Check size={14} /> SAVE</button>
-                <button className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={() => setEditingId(null)}><XIcon size={14} /> CANCEL</button>
+                <button className="btn-primary" style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={() => saveEdit(p.id)}><Check size={14} /> {t.portfolio.save}</button>
+                <button className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: 4 }} onClick={() => setEditingId(null)}><XIcon size={14} /> {t.portfolio.cancel}</button>
               </div>
             ) : (
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <div style={{ fontSize: 13, color: "#3C3A33" }}>
                   <strong style={{ color: "var(--navy)" }}>{p.label}</strong> — {p.note}
-                  {!!p.hidden && <span style={{ marginLeft: 6 }}><Tag tone="steel">Hidden</Tag></span>}
-                  {!!p.lead_id && <span style={{ marginLeft: 6 }}><Tag tone="amber">Confirmed job</Tag></span>}
+                  {!!p.hidden && <span style={{ marginLeft: 6 }}><Tag tone="steel">{t.portfolio.hidden}</Tag></span>}
+                  {!!p.lead_id && <span style={{ marginLeft: 6 }}><Tag tone="amber">{t.portfolio.confirmedJob}</Tag></span>}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                   <button className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px" }} onClick={() => startEdit(p)}>
-                    <Pencil size={13} /> EDIT
+                    <Pencil size={13} /> {t.portfolio.edit}
                   </button>
                   <button className="btn-secondary" style={{ display: "flex", alignItems: "center", gap: 4, padding: "6px 10px" }} onClick={() => toggleHide(p)}>
-                    {p.hidden ? <Eye size={13} /> : <EyeOff size={13} />} {p.hidden ? "SHOW" : "HIDE"}
+                    {p.hidden ? <Eye size={13} /> : <EyeOff size={13} />} {p.hidden ? t.portfolio.show : t.portfolio.hide}
                   </button>
                 </div>
               </div>
             )}
           </div>
         ))}
-        {items.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No portfolio items yet.</div>}
+        {items.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>{t.portfolio.noItems}</div>}
       </div>
 
       {confirmItem && (
@@ -130,15 +132,15 @@ export default function PortfolioManager() {
           <div style={{ display: "flex", gap: 10 }}>
             <AlertTriangle size={20} color="var(--amber-dark)" style={{ flexShrink: 0, marginTop: 2 }} />
             <div>
-              <div className="display" style={{ fontSize: 16, color: "var(--navy)", fontWeight: 600 }}>Hide this item?</div>
+              <div className="display" style={{ fontSize: 16, color: "var(--navy)", fontWeight: 600 }}>{t.portfolio.hideConfirmTitle}</div>
               <div style={{ fontSize: 13, color: "#3C3A33", marginTop: 8, lineHeight: 1.5 }}>
-                This is linked to a confirmed job. Hiding it will lower your job count and ranking score. Continue?
+                {t.portfolio.hideConfirmDesc}
               </div>
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-            <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmItem(null)}>CANCEL</button>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => applyHide(confirmItem)}>HIDE IT</button>
+            <button className="btn-secondary" style={{ flex: 1 }} onClick={() => setConfirmItem(null)}>{t.portfolio.cancel}</button>
+            <button className="btn-primary" style={{ flex: 1 }} onClick={() => applyHide(confirmItem)}>{t.portfolio.hideIt}</button>
           </div>
         </Modal>
       )}

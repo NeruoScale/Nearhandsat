@@ -3,21 +3,23 @@ import { ArrowLeft, MapPin, Star, CheckCircle2, MessageCircle, Send, X } from "l
 import { api } from "../api";
 import { ICONS, Tag, Gauge, Modal, formatLocation } from "../components/Shared";
 import { useLeadThread } from "../hooks/useLeadThread";
+import { useLanguage } from "../i18n";
 import Auth from "./Auth";
 
-function formatRelative(sqlDatetime) {
+function formatRelative(sqlDatetime, t) {
   if (!sqlDatetime) return null;
   const then = new Date(sqlDatetime.replace(" ", "T") + "Z").getTime();
   const mins = Math.floor((Date.now() - then) / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} minute${mins === 1 ? "" : "s"} ago`;
+  if (mins < 1) return t.profile.justNow;
+  if (mins < 60) return t.profile.minutesAgo(mins);
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+  if (hours < 24) return t.profile.hoursAgo(hours);
   const days = Math.floor(hours / 24);
-  return `${days} day${days === 1 ? "" : "s"} ago`;
+  return t.profile.daysAgo(days);
 }
 
 function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
+  const { t } = useLanguage();
   const [leadId, setLeadId] = useState(null);
   const [draft, setDraft] = useState("");
   const [error, setError] = useState("");
@@ -34,9 +36,9 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
     return (
       <div>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none" }}><X size={18} color="var(--steel)" /></button>
-        <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>Sign in to message {artisan.name}</div>
+        <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>{t.profile.contactFlow.signInToMessage(artisan.name)}</div>
         <div style={{ fontSize: 12, color: "var(--steel)", marginTop: 4, marginBottom: 16, lineHeight: 1.5 }}>
-          Create a free account (or sign in) to contact professionals — you'll come right back here to send your message.
+          {t.profile.contactFlow.signInDesc}
         </div>
         <Auth compact initialMode="register" initialRole="client" lockRole="client" onAuth={onGuestAuth} />
       </div>
@@ -45,7 +47,7 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
 
   async function sendFirst() {
     if (!draft.trim()) {
-      setError("Describe the job before sending.");
+      setError(t.profile.contactFlow.describeBeforeSending);
       return;
     }
     setBusy(true);
@@ -92,12 +94,12 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <CheckCircle2 size={22} color="var(--green)" />
-          <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>Hire confirmed</div>
+          <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>{t.profile.contactFlow.hireConfirmedTitle}</div>
         </div>
         <div style={{ fontSize: 13, color: "var(--steel)", marginTop: 8, lineHeight: 1.5 }}>
-          You can mark the job complete and leave a review from your leads list once it's done.
+          {t.profile.contactFlow.hireConfirmedDesc}
         </div>
-        <button className="btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={onClose}>DONE</button>
+        <button className="btn-primary" style={{ width: "100%", marginTop: 16 }} onClick={onClose}>{t.profile.contactFlow.done}</button>
       </div>
     );
   }
@@ -106,18 +108,18 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
     return (
       <div>
         <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none" }}><X size={18} color="var(--steel)" /></button>
-        <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>Message {artisan.name}</div>
-        <div style={{ fontSize: 12, color: "var(--steel)", marginTop: 4 }}>Contact stays in-app until you confirm a hire.</div>
+        <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>{t.profile.contactFlow.message(artisan.name)}</div>
+        <div style={{ fontSize: 12, color: "var(--steel)", marginTop: 4 }}>{t.profile.contactFlow.staysInApp}</div>
         <textarea
           className="input"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Describe the job — what needs doing, and when."
+          placeholder={t.profile.contactFlow.describePlaceholder}
           style={{ minHeight: 90, marginTop: 16, resize: "vertical" }}
         />
         {error && <div className="error-text">{error}</div>}
         <button className="btn-primary" style={{ width: "100%", marginTop: 12, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} disabled={busy} onClick={sendFirst}>
-          <Send size={14} /> SEND MESSAGE
+          <Send size={14} /> {t.profile.contactFlow.sendMessage}
         </button>
       </div>
     );
@@ -126,7 +128,7 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
   return (
     <div>
       <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, background: "none", border: "none" }}><X size={18} color="var(--steel)" /></button>
-      <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>Conversation</div>
+      <div className="display" style={{ fontSize: 18, color: "var(--navy)", fontWeight: 600 }}>{t.profile.contactFlow.conversation}</div>
       <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10, maxHeight: 220, overflowY: "auto" }}>
         {messages.map((m) => {
           const mine = m.sender_id === user.id;
@@ -153,23 +155,24 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
         className="input"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
-        placeholder="Send a follow-up message"
+        placeholder={t.profile.contactFlow.followUpPlaceholder}
         style={{ minHeight: 60, marginTop: 12, resize: "vertical" }}
       />
       {error && <div className="error-text">{error}</div>}
-      <button className="btn-secondary" style={{ width: "100%", marginTop: 8 }} disabled={busy} onClick={sendMore}>SEND</button>
+      <button className="btn-secondary" style={{ width: "100%", marginTop: 8 }} disabled={busy} onClick={sendMore}>{t.profile.contactFlow.send}</button>
 
       <div style={{ marginTop: 18, padding: 12, background: "#FBEBD4", borderRadius: 6, fontSize: 12, color: "var(--amber-dark)" }}>
-        Once you've agreed to move forward, confirm it below — this is what lets us keep the app free.
+        {t.profile.contactFlow.hireBanner}
       </div>
       <button className="btn-primary" style={{ width: "100%", marginTop: 10, background: "var(--green)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }} disabled={busy} onClick={confirmHire}>
-        <CheckCircle2 size={15} /> I HIRED {artisan.name.split(" ")[0].toUpperCase()}
+        <CheckCircle2 size={15} /> {t.profile.contactFlow.iHired(artisan.name.split(" ")[0].toUpperCase())}
       </button>
     </div>
   );
 }
 
 export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
+  const { t } = useLanguage();
   const [artisan, setArtisan] = useState(null);
   const [contacting, setContacting] = useState(false);
 
@@ -177,7 +180,7 @@ export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
     api.getArtisan(artisanId).then(setArtisan);
   }, [artisanId]);
 
-  if (!artisan) return <div style={{ padding: 40, textAlign: "center", color: "var(--steel)" }}>Loading…</div>;
+  if (!artisan) return <div style={{ padding: 40, textAlign: "center", color: "var(--steel)" }}>{t.common.loading}</div>;
 
   const Icon = ICONS[artisan.trade] || ICONS.Electrician;
   const ratio = artisan.conversion_ratio !== null ? Math.round(artisan.conversion_ratio * 100) : null;
@@ -185,7 +188,7 @@ export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
   return (
     <div>
       <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "var(--steel)", fontSize: 13, padding: 0, marginBottom: 18 }}>
-        <ArrowLeft size={15} /> Back to search
+        <ArrowLeft size={15} /> {t.profile.backToSearch}
       </button>
 
       <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
@@ -196,22 +199,22 @@ export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
           <div className="display" style={{ fontSize: 26, color: "var(--navy)", fontWeight: 600 }}>{artisan.name}</div>
           <div style={{ fontSize: 13, color: "var(--steel)", display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
             <MapPin size={12} />{formatLocation(artisan)} · {artisan.trade}
-            {artisan.service_radius_km ? ` · travels up to ${artisan.service_radius_km}km` : ""}
+            {artisan.service_radius_km ? t.profile.travelsUpTo(artisan.service_radius_km) : ""}
           </div>
           <div style={{ fontSize: 12, color: artisan.online ? "var(--green)" : "var(--steel)", display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
             {artisan.online ? (
               <>
                 <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--green)", display: "inline-block" }} />
-                Online now
+                {t.profile.online}
               </>
             ) : (
-              <span>{artisan.last_seen_at ? `Last seen ${formatRelative(artisan.last_seen_at)}` : "Offline"}</span>
+              <span>{artisan.last_seen_at ? t.profile.lastSeen(formatRelative(artisan.last_seen_at, t)) : t.profile.offline}</span>
             )}
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-            <Tag tone="amber"><Star size={10} style={{ verticalAlign: -1, marginRight: 3 }} />{Number(artisan.avg_rating).toFixed(1)} ({artisan.review_count} reviews)</Tag>
-            {artisan.jobs_completed >= 15 && <Tag tone="green"><CheckCircle2 size={10} style={{ verticalAlign: -1, marginRight: 3 }} />Verified</Tag>}
-            {ratio !== null && <Tag>{ratio}% lead-to-hire</Tag>}
+            <Tag tone="amber"><Star size={10} style={{ verticalAlign: -1, marginRight: 3 }} />{Number(artisan.avg_rating).toFixed(1)} ({t.profile.reviewsCount(artisan.review_count)})</Tag>
+            {artisan.jobs_completed >= 15 && <Tag tone="green"><CheckCircle2 size={10} style={{ verticalAlign: -1, marginRight: 3 }} />{t.profile.verified}</Tag>}
+            {ratio !== null && <Tag>{t.profile.leadToHire(ratio)}</Tag>}
           </div>
         </div>
         <Gauge value={artisan.jobs_completed} max={Math.max(60, artisan.jobs_completed)} />
@@ -220,10 +223,10 @@ export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
       <div style={{ marginTop: 24, fontSize: 14, lineHeight: 1.6, color: "#3C3A33" }}>{artisan.bio}</div>
 
       <button className="btn-primary" style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 7 }} onClick={() => setContacting(true)}>
-        <MessageCircle size={16} /> CONTACT {artisan.name.split(" ")[0].toUpperCase()}
+        <MessageCircle size={16} /> {t.profile.contact(artisan.name.split(" ")[0].toUpperCase())}
       </button>
 
-      <div className="display" style={{ marginTop: 32, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>PAST WORK</div>
+      <div className="display" style={{ marginTop: 32, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>{t.profile.pastWork}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12, marginTop: 14 }}>
         {artisan.portfolio.map((p) => (
           <div key={p.id} className="card" style={{ overflow: "hidden" }}>
@@ -236,10 +239,10 @@ export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
             </div>
           </div>
         ))}
-        {artisan.portfolio.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No portfolio items yet.</div>}
+        {artisan.portfolio.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>{t.profile.noPortfolio}</div>}
       </div>
 
-      <div className="display" style={{ marginTop: 32, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>REVIEWS</div>
+      <div className="display" style={{ marginTop: 32, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>{t.profile.reviews}</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 14 }}>
         {artisan.reviews.map((r) => (
           <div key={r.id} style={{ borderLeft: "3px solid var(--amber)", paddingLeft: 12 }}>
@@ -254,7 +257,7 @@ export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
             <div style={{ fontSize: 13, color: "#3C3A33", marginTop: 3 }}>{r.comment}</div>
           </div>
         ))}
-        {artisan.reviews.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>No reviews yet.</div>}
+        {artisan.reviews.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>{t.profile.noReviews}</div>}
       </div>
 
       {contacting && (

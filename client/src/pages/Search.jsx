@@ -4,11 +4,13 @@ import { api } from "../api";
 import { WorkTag } from "../components/Shared";
 import TradeCombobox from "../components/TradeCombobox";
 import LocationPicker from "../components/LocationPicker";
+import { useLanguage } from "../i18n";
 
 const PAGE_SIZE = 20;
 const EMPTY_LOCATION = { country: "", state: "", city: "" };
 
 export default function Search({ onSelect }) {
+  const { t } = useLanguage();
   const [q, setQ] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState(EMPTY_LOCATION);
@@ -62,7 +64,7 @@ export default function Search({ onSelect }) {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by trade, name, or city"
+            placeholder={t.search.placeholder}
             style={{ border: "none", outline: "none", background: "transparent", flex: 1, fontSize: 14 }}
           />
         </div>
@@ -71,10 +73,10 @@ export default function Search({ onSelect }) {
       <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "center", width: 200 }}>
           <div style={{ flex: 1 }}>
-            <TradeCombobox value={category} onChange={setCategory} placeholder="All categories" />
+            <TradeCombobox value={category} onChange={setCategory} placeholder={t.search.allCategories} />
           </div>
           {category && (
-            <button type="button" className="btn-secondary" style={{ padding: "9px 10px", flexShrink: 0 }} onClick={() => setCategory("")} title="Clear category">
+            <button type="button" className="btn-secondary" style={{ padding: "9px 10px", flexShrink: 0 }} onClick={() => setCategory("")} title={t.search.clearCategory}>
               <X size={13} />
             </button>
           )}
@@ -89,21 +91,21 @@ export default function Search({ onSelect }) {
               className="btn-secondary"
               style={{ padding: "9px 10px", flexShrink: 0 }}
               onClick={() => setLocation(EMPTY_LOCATION)}
-              title="Clear location — all locations"
+              title={t.search.clearLocation}
             >
               <X size={13} />
             </button>
           )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--steel)" }}>
-          Min rating
+          {t.search.minRating}
           <input type="range" min="0" max="5" step="0.5" value={minRating} onChange={(e) => setMinRating(parseFloat(e.target.value))} />
           <span className="mono" style={{ width: 24 }}>{minRating.toFixed(1)}</span>
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 16, color: "var(--steel)", fontSize: 12.5 }}>
-        <Users size={13} /> {loading ? "Searching…" : `${rows.length} of ${total} pro${total !== 1 ? "s" : ""} found`}
+        <Users size={13} /> {loading ? t.search.searching : t.search.resultsCount(rows.length, total)}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: 14, marginTop: 12 }}>
@@ -115,7 +117,7 @@ export default function Search({ onSelect }) {
       {!loading && rows.length < total && (
         <div style={{ textAlign: "center", marginTop: 20 }}>
           <button className="btn-secondary" onClick={loadMore} disabled={loadingMore}>
-            {loadingMore ? "LOADING…" : "LOAD MORE"}
+            {loadingMore ? t.search.loadingMore : t.search.loadMore}
           </button>
         </div>
       )}

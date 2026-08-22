@@ -5,6 +5,7 @@ import { useLanguage, translations } from "../i18n";
 const LANGS = Object.keys(translations);
 
 function InstallBanner() {
+  const { t } = useLanguage();
   const [installEvent, setInstallEvent] = useState(null);
   const [dismissed, setDismissed] = useState(false);
 
@@ -45,9 +46,9 @@ function InstallBanner() {
         maxWidth: "calc(100vw - 32px)",
       }}
     >
-      <span>Install NearHandsAT for quick access</span>
+      <span>{t.common.install}</span>
       <button onClick={install} className="btn-primary" style={{ padding: "6px 12px", fontSize: 11, display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-        <Download size={12} /> INSTALL
+        <Download size={12} /> {t.common.installButton}
       </button>
       <button onClick={() => setDismissed(true)} style={{ background: "none", border: "none", color: "var(--chalk)", cursor: "pointer", display: "flex", flexShrink: 0, padding: 2 }}>
         <X size={14} />
