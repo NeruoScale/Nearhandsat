@@ -6,8 +6,8 @@ const { MIN_LEADS_FOR_CONVERSION } = require("../utils/ranking");
 const router = express.Router();
 router.use(requireAuth, requireRole("admin"));
 
-router.get("/stats", (req, res) => {
-  const totals = db
+router.get("/stats", async (req, res) => {
+  const totals = await db
     .prepare(
       `SELECT
         (SELECT COUNT(*) FROM users WHERE role='client') AS clients,
@@ -17,25 +17,41 @@ router.get("/stats", (req, res) => {
         (SELECT COUNT(*) FROM reviews) AS reviews`
     )
     .get();
+  // COUNT(*) comes back as BIGINT from Postgres, which the pg driver hands
+  // back as a string -- SQLite already returns plain numbers. Normalize
+  // every one of these fields, since a string "0" is truthy in JS and
+  // would otherwise skip the ": 0" branch below on an empty database.
+  totals.clients = Number(totals.clients);
+  totals.artisans = Number(totals.artisans);
+  totals.leads = Number(totals.leads);
+  totals.hires = Number(totals.hires);
+  totals.reviews = Number(totals.reviews);
   totals.conversion_rate = totals.leads
     ? Math.round((totals.hires / totals.leads) * 1000) / 10
     : 0;
 
-  const byCategory = db
-    .prepare(
-      `SELECT p.trade AS category, p.city,
-        COUNT(l.id) AS leads,
-        SUM(CASE WHEN l.status IN ('hired','completed') THEN 1 ELSE 0 END) AS hires
-       FROM artisan_profiles p
-       LEFT JOIN leads l ON l.artisan_id = p.user_id
-       GROUP BY p.trade, p.city
-       ORDER BY p.city, p.trade`
-    )
-    .all()
-    .map((r) => ({
+  const byCategory = (
+    await db
+      .prepare(
+        `SELECT p.trade AS category, p.city,
+          COUNT(l.id) AS leads,
+          SUM(CASE WHEN l.status IN ('hired','completed') THEN 1 ELSE 0 END) AS hires
+         FROM artisan_profiles p
+         LEFT JOIN leads l ON l.artisan_id = p.user_id
+         GROUP BY p.trade, p.city
+         ORDER BY p.city, p.trade`
+      )
+      .all()
+  ).map((r) => {
+    const leads = Number(r.leads);
+    const hires = Number(r.hires) || 0; // SUM() over zero rows comes back NULL, not 0, in both engines
+    return {
       ...r,
-      conversion_rate: r.leads ? Math.round((r.hires / r.leads) * 1000) / 10 : 0,
-    }));
+      leads,
+      hires,
+      conversion_rate: leads ? Math.round((hires / leads) * 1000) / 10 : 0,
+    };
+  });
 
   res.json({ totals, byCategory });
 });
@@ -43,14 +59,16 @@ router.get("/stats", (req, res) => {
 // Soft-fraud detection: artisans with a lot of leads but a suspiciously
 // low confirmed-hire ratio. Informational only -- used to lower search
 // ranking or prompt manual review, never an automatic ban.
-router.get("/flagged", (req, res) => {
-  const rows = db
-    .prepare(
-      `SELECT u.id, u.name, p.trade, p.city, p.leads_received, p.jobs_completed
-       FROM artisan_profiles p JOIN users u ON u.id = p.user_id
-       WHERE p.leads_received >= ?`
-    )
-    .all(MIN_LEADS_FOR_CONVERSION)
+router.get("/flagged", async (req, res) => {
+  const rows = (
+    await db
+      .prepare(
+        `SELECT u.id, u.name, p.trade, p.city, p.leads_received, p.jobs_completed
+         FROM artisan_profiles p JOIN users u ON u.id = p.user_id
+         WHERE p.leads_received >= ?`
+      )
+      .all(MIN_LEADS_FOR_CONVERSION)
+  )
     .map((r) => ({ ...r, ratio: Math.round((r.jobs_completed / r.leads_received) * 1000) / 10 }))
     .filter((r) => r.ratio < 20)
     .sort((a, b) => a.ratio - b.ratio);
@@ -63,13 +81,13 @@ router.get("/flagged", (req, res) => {
   res.json({ results, total, limit, offset });
 });
 
-router.get("/billing", (req, res) => {
-  res.json(db.prepare("SELECT * FROM billing_settings ORDER BY city, category").all());
+router.get("/billing", async (req, res) => {
+  res.json(await db.prepare("SELECT * FROM billing_settings ORDER BY city, category").all());
 });
 
-router.put("/billing/:id", (req, res) => {
+router.put("/billing/:id", async (req, res) => {
   const { paid_mode, free_lead_limit, price_per_lead, subscription_price } = req.body || {};
-  db.prepare(
+  await db.prepare(
     `UPDATE billing_settings SET
       paid_mode = COALESCE(?, paid_mode),
       free_lead_limit = COALESCE(?, free_lead_limit),

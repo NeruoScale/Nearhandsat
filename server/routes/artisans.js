@@ -7,9 +7,9 @@ const { isOnline } = require("../presence");
 const router = express.Router();
 
 // GET /api/artisans?category=&city=&country=&state=&minRating=&sort=&limit=&offset=
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const { category, city, country, state, minRating, q } = req.query;
-  let rows = db
+  let rows = await db
     .prepare(
       `SELECT u.id, u.name, p.trade, p.city, p.country, p.state, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received
        FROM artisan_profiles p JOIN users u ON u.id = p.user_id`
@@ -47,9 +47,9 @@ router.get("/", (req, res) => {
   res.json({ results, total, limit, offset });
 });
 
-router.get("/:id", (req, res) => {
+router.get("/:id", async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const profile = db
+  const profile = await db
     .prepare(
       `SELECT u.id, u.name, p.trade, p.city, p.country, p.state, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received,
         p.service_radius_km, u.last_seen_at
@@ -59,10 +59,10 @@ router.get("/:id", (req, res) => {
   if (!profile) return res.status(404).json({ error: "Profile not found." });
   profile.online = isOnline(id);
 
-  const portfolio = db
+  const portfolio = await db
     .prepare("SELECT id, label, note FROM portfolio_items WHERE artisan_id = ? AND hidden = 0 ORDER BY id DESC")
     .all(id);
-  const reviews = db
+  const reviews = await db
     .prepare(
       `SELECT r.id, r.rating, r.comment, r.created_at, u.name AS author
        FROM reviews r JOIN users u ON u.id = r.client_id
@@ -79,9 +79,9 @@ router.get("/:id", (req, res) => {
   });
 });
 
-router.put("/me", requireAuth, requireRole("artisan"), (req, res) => {
+router.put("/me", requireAuth, requireRole("artisan"), async (req, res) => {
   const { bio, city, trade, latitude, longitude, service_radius_km } = req.body || {};
-  db.prepare(
+  await db.prepare(
     `UPDATE artisan_profiles SET
       bio = COALESCE(?, bio),
       city = COALESCE(?, city),
@@ -94,10 +94,10 @@ router.put("/me", requireAuth, requireRole("artisan"), (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/me/portfolio", requireAuth, requireRole("artisan"), (req, res) => {
+router.post("/me/portfolio", requireAuth, requireRole("artisan"), async (req, res) => {
   const { label, note } = req.body || {};
   if (!label) return res.status(400).json({ error: "Give this piece of work a title." });
-  const info = db
+  const info = await db
     .prepare("INSERT INTO portfolio_items (artisan_id, label, note) VALUES (?,?,?)")
     .run(req.user.id, label, note || "");
   res.status(201).json({ id: info.lastInsertRowid, label, note: note || "" });
@@ -106,15 +106,15 @@ router.post("/me/portfolio", requireAuth, requireRole("artisan"), (req, res) => 
 // Full portfolio for the owning artisan, including hidden items -- the
 // public GET /:id profile above excludes hidden ones, so the dashboard
 // needs its own view to let the artisan manage (and un-hide) everything.
-router.get("/me/portfolio", requireAuth, requireRole("artisan"), (req, res) => {
-  const items = db
+router.get("/me/portfolio", requireAuth, requireRole("artisan"), async (req, res) => {
+  const items = await db
     .prepare("SELECT id, label, note, hidden, lead_id FROM portfolio_items WHERE artisan_id = ? ORDER BY id DESC")
     .all(req.user.id);
   res.json(items);
 });
 
-router.put("/me/portfolio/:id", requireAuth, requireRole("artisan"), (req, res) => {
-  const item = db
+router.put("/me/portfolio/:id", requireAuth, requireRole("artisan"), async (req, res) => {
+  const item = await db
     .prepare("SELECT * FROM portfolio_items WHERE id = ? AND artisan_id = ?")
     .get(req.params.id, req.user.id);
   if (!item) return res.status(404).json({ error: "Portfolio item not found." });
@@ -123,7 +123,7 @@ router.put("/me/portfolio/:id", requireAuth, requireRole("artisan"), (req, res) 
   if (label !== undefined && !label.trim()) {
     return res.status(400).json({ error: "Give this piece of work a title." });
   }
-  db.prepare("UPDATE portfolio_items SET label = COALESCE(?, label), note = COALESCE(?, note) WHERE id = ?").run(
+  await db.prepare("UPDATE portfolio_items SET label = COALESCE(?, label), note = COALESCE(?, note) WHERE id = ?").run(
     label,
     note,
     item.id
@@ -135,21 +135,21 @@ router.put("/me/portfolio/:id", requireAuth, requireRole("artisan"), (req, res) 
 // linked to a confirmed job (lead_id set) move jobs_completed and, since
 // ranking_score is derived rather than stored, the recomputed score comes
 // back in the response so the UI can reflect the impact immediately.
-router.put("/me/portfolio/:id/hide", requireAuth, requireRole("artisan"), (req, res) => {
-  const item = db
+router.put("/me/portfolio/:id/hide", requireAuth, requireRole("artisan"), async (req, res) => {
+  const item = await db
     .prepare("SELECT * FROM portfolio_items WHERE id = ? AND artisan_id = ?")
     .get(req.params.id, req.user.id);
   if (!item) return res.status(404).json({ error: "Portfolio item not found." });
 
   const nextHidden = item.hidden ? 0 : 1;
-  db.prepare("UPDATE portfolio_items SET hidden = ? WHERE id = ?").run(nextHidden, item.id);
+  await db.prepare("UPDATE portfolio_items SET hidden = ? WHERE id = ?").run(nextHidden, item.id);
 
-  let profile = db.prepare("SELECT * FROM artisan_profiles WHERE user_id = ?").get(req.user.id);
+  let profile = await db.prepare("SELECT * FROM artisan_profiles WHERE user_id = ?").get(req.user.id);
   if (item.lead_id) {
     const delta = nextHidden ? -1 : 1;
     const nextJobs = Math.max(0, profile.jobs_completed + delta);
-    db.prepare("UPDATE artisan_profiles SET jobs_completed = ? WHERE user_id = ?").run(nextJobs, req.user.id);
-    profile = db.prepare("SELECT * FROM artisan_profiles WHERE user_id = ?").get(req.user.id);
+    await db.prepare("UPDATE artisan_profiles SET jobs_completed = ? WHERE user_id = ?").run(nextJobs, req.user.id);
+    profile = await db.prepare("SELECT * FROM artisan_profiles WHERE user_id = ?").get(req.user.id);
   }
 
   res.json({

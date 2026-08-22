@@ -10,7 +10,7 @@ const jwt = require("jsonwebtoken");
 const { SECRET } = require("./middleware/auth");
 const { markOnline, markOffline } = require("./presence");
 
-const db = require("./db"); // initializes + seeds sqlite db on first run
+const db = require("./db"); // SQLite by default; DB_DRIVER=postgres switches to server/db-postgres.js
 
 const app = express();
 app.use(compression());
@@ -37,8 +37,8 @@ io.on("connection", (socket) => {
   markOnline(socket.user.id);
 
   // Each lead conversation is a room; only its two participants may join.
-  socket.on("lead:join", (leadId) => {
-    const lead = db.prepare("SELECT * FROM leads WHERE id = ?").get(leadId);
+  socket.on("lead:join", async (leadId) => {
+    const lead = await db.prepare("SELECT * FROM leads WHERE id = ?").get(leadId);
     if (!lead) return;
     if (lead.client_id !== socket.user.id && lead.artisan_id !== socket.user.id) return;
     socket.join(`lead:${leadId}`);
@@ -48,9 +48,9 @@ io.on("connection", (socket) => {
     socket.leave(`lead:${leadId}`);
   });
 
-  socket.on("disconnect", () => {
+  socket.on("disconnect", async () => {
     markOffline(socket.user.id);
-    db.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").run(socket.user.id);
+    await db.prepare("UPDATE users SET last_seen_at = datetime('now') WHERE id = ?").run(socket.user.id);
   });
 });
 
