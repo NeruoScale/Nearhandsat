@@ -1,4 +1,13 @@
 const jwt = require("jsonwebtoken");
+
+// RAILWAY_ENVIRONMENT is injected automatically by Railway and is never set
+// locally, so this fails fast on Railway without touching the documented
+// local quick-start (npm start with no .env configured).
+if (!process.env.JWT_SECRET && process.env.RAILWAY_ENVIRONMENT) {
+  throw new Error(
+    "JWT_SECRET is not set. Refusing to start with the insecure development fallback on Railway."
+  );
+}
 const SECRET = process.env.JWT_SECRET || "dev-secret-change-in-production";
 
 function requireAuth(req, res, next) {
