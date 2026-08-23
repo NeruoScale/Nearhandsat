@@ -105,9 +105,20 @@ CREATE TABLE IF NOT EXISTS services (
   updated_at TEXT
 );
 
+-- README roadmap #4: leads already existed (with live production data) by
+-- the time this column was added, so this uses ALTER ... ADD COLUMN IF NOT
+-- EXISTS rather than baking it into the CREATE TABLE above -- Postgres's
+-- native equivalent of the SQLite side's ensureColumn() helper. Placed here,
+-- after services is created, since the REFERENCES target must already
+-- exist. Nullable for the same reason as the SQLite side: every pre-existing
+-- lead, and every future lead from the generic no-service "Contact" flow,
+-- stays valid.
+ALTER TABLE leads ADD COLUMN IF NOT EXISTS service_id INTEGER REFERENCES services(id);
+
 CREATE INDEX IF NOT EXISTS idx_leads_artisan ON leads(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_leads_client ON leads(client_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
+CREATE INDEX IF NOT EXISTS idx_leads_service ON leads(service_id);
 CREATE INDEX IF NOT EXISTS idx_portfolio_artisan ON portfolio_items(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_artisan ON reviews(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_lead ON reviews(lead_id);

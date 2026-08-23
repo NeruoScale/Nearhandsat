@@ -44,6 +44,7 @@ export const api = {
   updateProfile: (payload) => request("/artisans/me", { method: "PUT", body: payload }),
   createLead: (payload) => request("/leads", { method: "POST", body: payload }),
   myLeads: () => request("/leads/mine"),
+  getLead: (id) => request(`/leads/${id}`),
   leadMessages: (id) => request(`/leads/${id}/messages`),
   sendMessage: (id, content) => request(`/leads/${id}/messages`, { method: "POST", body: { content } }),
   confirmHire: (id) => request(`/leads/${id}/hire`, { method: "POST" }),

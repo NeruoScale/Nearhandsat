@@ -18,7 +18,7 @@ function formatRelative(sqlDatetime, t) {
   return t.profile.daysAgo(days);
 }
 
-function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
+function ContactFlow({ artisan, serviceId, user, onGuestAuth, onClose, onHired }) {
   const { t } = useLanguage();
   const [leadId, setLeadId] = useState(null);
   const [draft, setDraft] = useState("");
@@ -53,7 +53,9 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
     setBusy(true);
     setError("");
     try {
-      const res = await api.createLead({ artisanId: artisan.id, message: draft });
+      const res = await api.createLead(
+        serviceId ? { serviceId, message: draft } : { artisanId: artisan.id, message: draft }
+      );
       setLeadId(res.id);
       setDraft("");
     } catch (err) {
@@ -288,7 +290,14 @@ export default function Profile({ artisanId, highlightServiceId, onBack, user, o
 
       {contacting && (
         <Modal onClose={() => setContacting(false)}>
-          <ContactFlow artisan={artisan} user={user} onGuestAuth={onGuestAuth} onClose={() => setContacting(false)} onHired={() => api.getArtisan(artisanId).then(setArtisan)} />
+          <ContactFlow
+            artisan={artisan}
+            serviceId={highlightedService ? highlightedService.id : null}
+            user={user}
+            onGuestAuth={onGuestAuth}
+            onClose={() => setContacting(false)}
+            onHired={() => api.getArtisan(artisanId).then(setArtisan)}
+          />
         </Modal>
       )}
     </div>

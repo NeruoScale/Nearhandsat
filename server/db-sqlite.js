@@ -127,6 +127,13 @@ ensureColumn("artisan_profiles", "service_radius_km", "INTEGER");
 ensureColumn("artisan_profiles", "country", "TEXT");
 ensureColumn("artisan_profiles", "state", "TEXT");
 
+// README roadmap #4: nullable so every pre-existing lead (created before
+// this column existed, or via the generic "Contact" flow with no specific
+// service selected) stays valid -- the service link is additive, not
+// required.
+ensureColumn("leads", "service_id", "INTEGER REFERENCES services(id)");
+db.exec("CREATE INDEX IF NOT EXISTS idx_leads_service ON leads(service_id)");
+
 // --- Seed data (only if empty) ---
 const userCount = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
 if (userCount === 0) {

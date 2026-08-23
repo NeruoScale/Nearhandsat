@@ -69,6 +69,9 @@ export default function MyLeads() {
               <Tag tone={STATUS_TONE[l.status]}>{t.common.status[l.status]}</Tag>
             </div>
             <div style={{ fontSize: 11.5, color: "var(--steel)", marginTop: 4 }}>{t.myLeads.contacted(l.created_at)}</div>
+            {l.service_title && (
+              <div style={{ fontSize: 11.5, color: "var(--steel)", marginTop: 2 }}>{t.services.relatedTo(l.service_title)}</div>
+            )}
 
             {l.status === "hired" && (
               <button className="btn-secondary" style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }} onClick={() => markComplete(l.id)}>

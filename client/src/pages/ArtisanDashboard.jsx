@@ -40,6 +40,9 @@ function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
             {truncate(lead.first_message, 60)}
           </div>
           <div style={{ fontSize: 11, color: "var(--steel)", marginTop: 4 }}>{t.dashboard.requestRow.requested(formatDate(lead.created_at))}</div>
+          {lead.service_title && (
+            <div style={{ fontSize: 11, color: "var(--steel)", marginTop: 2 }}>{t.services.relatedTo(lead.service_title)}</div>
+          )}
         </div>
         {expanded ? <ChevronUp size={16} color="var(--steel)" /> : <ChevronDown size={16} color="var(--steel)" />}
       </div>

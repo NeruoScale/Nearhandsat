@@ -264,6 +264,7 @@ export const translations = {
       fixedPrice: (price, currency) => `${price} ${currency}`,
       contactForQuote: "Contact for quote",
       viewingService: "Selected service",
+      relatedTo: (title) => `Re: ${title}`,
     },
   },
 
@@ -527,6 +528,7 @@ export const translations = {
       fixedPrice: (price, currency) => `${price} ${currency}`,
       contactForQuote: "Devis sur demande",
       viewingService: "Service sélectionné",
+      relatedTo: (title) => `Concernant : ${title}`,
     },
   },
 
@@ -785,6 +787,7 @@ export const translations = {
       fixedPrice: (price, currency) => `${price} ${currency}`,
       contactForQuote: "اطلب عرض سعر",
       viewingService: "الخدمة المحددة",
+      relatedTo: (title) => `بخصوص: ${title}`,
     },
   },
 };
