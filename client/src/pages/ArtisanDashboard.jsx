@@ -3,6 +3,7 @@ import { TrendingUp, Award, ChevronDown, ChevronUp, Star } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
 import PortfolioManager from "../components/PortfolioManager";
+import ServiceManager from "../components/ServiceManager";
 import LocationManager from "../components/LocationManager";
 import { useLeadThread } from "../hooks/useLeadThread";
 import { useLanguage } from "../i18n";
@@ -206,6 +207,11 @@ export default function ArtisanDashboard({ user }) {
         {t.dashboard.yourPortfolio}
       </div>
       <PortfolioManager />
+
+      <div className="display" style={{ marginTop: 28, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>
+        {t.services.yourServices}
+      </div>
+      <ServiceManager />
     </div>
   );
 }

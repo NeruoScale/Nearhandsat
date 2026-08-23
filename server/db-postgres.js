@@ -87,6 +87,24 @@ CREATE TABLE IF NOT EXISTS billing_settings (
   UNIQUE(city, category)
 );
 
+-- README roadmap #3: structured services & offers. Location is deliberately
+-- not duplicated here -- eligibility/discovery joins back to artisan_profiles
+-- (city/country/state/latitude/longitude/service_radius_km), reusing the
+-- roadmap #2 geo utility as-is.
+CREATE TABLE IF NOT EXISTS services (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  artisan_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT DEFAULT '',
+  category TEXT NOT NULL,
+  pricing_model TEXT NOT NULL CHECK(pricing_model IN ('fixed','starting_at','quote')),
+  price REAL,
+  currency TEXT NOT NULL DEFAULT 'DZD',
+  status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','published','archived')),
+  created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+  updated_at TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_leads_artisan ON leads(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_leads_client ON leads(client_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
@@ -94,6 +112,9 @@ CREATE INDEX IF NOT EXISTS idx_portfolio_artisan ON portfolio_items(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_artisan ON reviews(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_lead ON reviews(lead_id);
 CREATE INDEX IF NOT EXISTS idx_messages_lead ON messages(lead_id);
+CREATE INDEX IF NOT EXISTS idx_services_artisan ON services(artisan_id);
+CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
+CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
 `;
 
 if (!process.env.DATABASE_URL) {

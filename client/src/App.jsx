@@ -16,6 +16,7 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState("search");
   const [selectedArtisan, setSelectedArtisan] = useState(null);
+  const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [showLanding, setShowLanding] = useState(true);
   const [guestBrowsing, setGuestBrowsing] = useState(false);
   const [authIntent, setAuthIntent] = useState({ mode: "login", role: "client" });
@@ -49,6 +50,7 @@ export default function App() {
     setUser(null);
     setToken(null);
     setSelectedArtisan(null);
+    setSelectedServiceId(null);
     setGuestBrowsing(false);
     setShowLanding(true);
   }
@@ -90,7 +92,7 @@ export default function App() {
             {tabs.map(([key, label]) => (
               <button
                 key={key}
-                onClick={() => { setTab(key); setSelectedArtisan(null); }}
+                onClick={() => { setTab(key); setSelectedArtisan(null); setSelectedServiceId(null); }}
                 className="display"
                 style={{
                   padding: "7px 14px",
@@ -120,9 +122,22 @@ export default function App() {
       </div>
 
       <div style={{ maxWidth: 780, margin: "0 auto", padding: "24px 20px 60px" }}>
-        {tab === "search" && !selectedArtisan && <Search onSelect={setSelectedArtisan} />}
+        {tab === "search" && !selectedArtisan && (
+          <Search
+            onSelect={(artisanId, serviceId) => {
+              setSelectedArtisan(artisanId);
+              setSelectedServiceId(serviceId || null);
+            }}
+          />
+        )}
         {tab === "search" && selectedArtisan && (
-          <Profile artisanId={selectedArtisan} onBack={() => setSelectedArtisan(null)} user={user} onGuestAuth={onGuestAuth} />
+          <Profile
+            artisanId={selectedArtisan}
+            highlightServiceId={selectedServiceId}
+            onBack={() => { setSelectedArtisan(null); setSelectedServiceId(null); }}
+            user={user}
+            onGuestAuth={onGuestAuth}
+          />
         )}
         {tab === "leads" && user && <MyLeads />}
         {tab === "dashboard" && user && <ArtisanDashboard user={user} />}

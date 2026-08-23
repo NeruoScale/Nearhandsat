@@ -54,4 +54,10 @@ export const api = {
   adminFlagged: (params) => request(`/admin/flagged?${new URLSearchParams(params || {}).toString()}`),
   adminBilling: () => request("/admin/billing"),
   updateBilling: (id, payload) => request(`/admin/billing/${id}`, { method: "PUT", body: payload }),
+  searchServices: (params) => request(`/services?${new URLSearchParams(params).toString()}`),
+  getService: (id) => request(`/services/${id}`),
+  myServices: () => request("/services/mine"),
+  addService: (payload) => request("/services", { method: "POST", body: payload }),
+  updateService: (id, payload) => request(`/services/${id}`, { method: "PUT", body: payload }),
+  setServiceStatus: (id, status) => request(`/services/${id}/status`, { method: "PUT", body: { status } }),
 };

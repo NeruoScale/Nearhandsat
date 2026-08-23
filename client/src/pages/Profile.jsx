@@ -171,14 +171,23 @@ function ContactFlow({ artisan, user, onGuestAuth, onClose, onHired }) {
   );
 }
 
-export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
+export default function Profile({ artisanId, highlightServiceId, onBack, user, onGuestAuth }) {
   const { t } = useLanguage();
   const [artisan, setArtisan] = useState(null);
+  const [highlightedService, setHighlightedService] = useState(null);
   const [contacting, setContacting] = useState(false);
 
   useEffect(() => {
     api.getArtisan(artisanId).then(setArtisan);
   }, [artisanId]);
+
+  useEffect(() => {
+    if (!highlightServiceId) {
+      setHighlightedService(null);
+      return;
+    }
+    api.getService(highlightServiceId).then(setHighlightedService);
+  }, [highlightServiceId]);
 
   if (!artisan) return <div style={{ padding: 40, textAlign: "center", color: "var(--steel)" }}>{t.common.loading}</div>;
 
@@ -225,6 +234,23 @@ export default function Profile({ artisanId, onBack, user, onGuestAuth }) {
       <button className="btn-primary" style={{ marginTop: 18, display: "flex", alignItems: "center", gap: 7 }} onClick={() => setContacting(true)}>
         <MessageCircle size={16} /> {t.profile.contact(artisan.name.split(" ")[0].toUpperCase())}
       </button>
+
+      {highlightedService && (
+        <div className="card" style={{ marginTop: 20, padding: 16 }}>
+          <div style={{ fontSize: 11, color: "var(--steel)", letterSpacing: 0.5, marginBottom: 6 }}>{t.services.viewingService.toUpperCase()}</div>
+          <div className="display" style={{ fontSize: 16, color: "var(--navy)", fontWeight: 600 }}>{highlightedService.title}</div>
+          <div style={{ fontSize: 13, color: "#3C3A33", marginTop: 6, lineHeight: 1.5 }}>{highlightedService.description}</div>
+          <div style={{ marginTop: 10 }}>
+            <Tag tone="amber">
+              {highlightedService.pricing_model === "quote"
+                ? t.services.contactForQuote
+                : highlightedService.pricing_model === "starting_at"
+                ? t.services.startingFrom(highlightedService.price, highlightedService.currency)
+                : t.services.fixedPrice(highlightedService.price, highlightedService.currency)}
+            </Tag>
+          </div>
+        </div>
+      )}
 
       <div className="display" style={{ marginTop: 32, fontSize: 13, color: "var(--steel)", letterSpacing: 1.5, borderBottom: "1px solid var(--line)", paddingBottom: 8 }}>{t.profile.pastWork}</div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: 12, marginTop: 14 }}>

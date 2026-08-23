@@ -147,6 +147,46 @@ export function WorkTag({ artisan, onClick }) {
   );
 }
 
+// Roadmap #3: a service search result. Deliberately styled after WorkTag
+// rather than sharing its markup -- a service card leads with its own
+// title/price, the professional is secondary context here, the reverse of
+// WorkTag's professional-first framing.
+export function ServiceTag({ service, onClick }) {
+  const { t } = useLanguage();
+  const Icon = ICONS[service.category] || Hammer;
+  const price =
+    service.pricing_model === "quote"
+      ? t.services.contactForQuote
+      : service.pricing_model === "starting_at"
+      ? t.services.startingFrom(service.price, service.currency)
+      : t.services.fixedPrice(service.price, service.currency);
+  return (
+    <div onClick={onClick} className="card" style={{ padding: "16px 18px", cursor: "pointer" }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <div
+          style={{
+            width: 30, height: 30, borderRadius: 6, background: "var(--navy)",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          }}
+        >
+          <Icon size={16} color="var(--chalk)" />
+        </div>
+        <div style={{ minWidth: 0, flex: 1 }}>
+          <div className="display" style={{ fontSize: 15, color: "var(--navy)", fontWeight: 600 }}>{service.title}</div>
+          <div style={{ fontSize: 12, color: "var(--steel)", display: "flex", alignItems: "center", gap: 4 }}>
+            <MapPin size={11} />
+            {formatLocation(service)} · {t.services.byArtisan(service.artisan_name)}
+          </div>
+        </div>
+      </div>
+      <div style={{ marginTop: 10, fontSize: 13, color: "#3C3A33", lineHeight: 1.5 }}>{service.description}</div>
+      <div style={{ marginTop: 10 }}>
+        <Tag tone="amber">{price}</Tag>
+      </div>
+    </div>
+  );
+}
+
 export function Modal({ children, onClose }) {
   return (
     <div
