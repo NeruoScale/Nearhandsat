@@ -2,24 +2,47 @@ const express = require("express");
 const db = require("../db");
 const { requireAuth, requireRole } = require("../middleware/auth");
 const { rankingScore, conversionRatio } = require("../utils/ranking");
+const { resolveLocation, isWithinRadius } = require("../utils/geo");
 const { isOnline } = require("../presence");
 
 const router = express.Router();
 
 // GET /api/artisans?category=&city=&country=&state=&minRating=&sort=&limit=&offset=
+//
+// Radius-based location eligibility (README roadmap #2): when a specific
+// `city` is searched, a professional qualifies either by exact city-text
+// match (today's behavior, unchanged) OR by being within their own
+// service_radius_km of the searched location -- whichever check has usable
+// data. isWithinRadius() returns null (not true/false) when it can't be
+// determined (no resolvable coordinate on either side, or no configured
+// radius), and that null is exactly what falls back to the exact-text
+// check below, so missing data never silently becomes "eligible" or
+// "ineligible" -- see server/utils/geo.js for the resolution/eligibility
+// rules themselves. country/state/category/minRating/q filtering is
+// unchanged.
 router.get("/", async (req, res) => {
   const { category, city, country, state, minRating, q } = req.query;
   let rows = await db
     .prepare(
-      `SELECT u.id, u.name, p.trade, p.city, p.country, p.state, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received
+      `SELECT u.id, u.name, p.trade, p.city, p.country, p.state, p.bio, p.avg_rating, p.review_count, p.jobs_completed, p.leads_received,
+        p.latitude, p.longitude, p.service_radius_km
        FROM artisan_profiles p JOIN users u ON u.id = p.user_id`
     )
     .all();
 
   if (category && category !== "All") rows = rows.filter((r) => r.trade === category);
-  if (city && city !== "All") rows = rows.filter((r) => r.city === city);
-  if (country) rows = rows.filter((r) => r.country === country);
-  if (state) rows = rows.filter((r) => r.state === state);
+
+  if (city && city !== "All") {
+    const searchLocation = resolveLocation({ country, state, city });
+    rows = rows.filter((r) => {
+      const eligible = isWithinRadius(searchLocation, r);
+      return eligible === null ? r.city === city : eligible;
+    });
+  } else {
+    if (country) rows = rows.filter((r) => r.country === country);
+    if (state) rows = rows.filter((r) => r.state === state);
+  }
+
   if (minRating) rows = rows.filter((r) => r.avg_rating >= parseFloat(minRating));
   if (q) {
     const needle = q.toLowerCase();
@@ -31,11 +54,15 @@ router.get("/", async (req, res) => {
     );
   }
 
-  rows = rows.map((r) => ({
-    ...r,
-    conversion_ratio: conversionRatio(r),
-    ranking_score: rankingScore(r),
-  }));
+  rows = rows.map((r) => {
+    const conversion_ratio = conversionRatio(r);
+    const ranking_score = rankingScore(r);
+    // latitude/longitude/service_radius_km are used above for eligibility
+    // only -- never returned publicly, same as the existing artisan-detail
+    // endpoint's contract ("exact coordinates are never shown").
+    const { latitude, longitude, service_radius_km, ...publicFields } = r;
+    return { ...publicFields, conversion_ratio, ranking_score };
+  });
 
   rows.sort((a, b) => b.ranking_score - a.ranking_score);
 
