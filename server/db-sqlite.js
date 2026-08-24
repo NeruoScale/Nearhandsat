@@ -66,6 +66,30 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- README roadmap #5: chat & notifications. One conversation per lead
+-- (1:1) -- service/client/artisan are deliberately not duplicated here,
+-- derived via lead_id -> leads exactly like leads.service_id -> services
+-- already does. messages.lead_id itself remains the actual join key for
+-- the message thread (unchanged) and the Socket.IO room name (lead:<id>,
+-- unchanged) -- this table exists to track thread-level activity
+-- (updated_at) separately from the lead's own business-status timestamps.
+CREATE TABLE IF NOT EXISTS conversations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lead_id INTEGER NOT NULL UNIQUE REFERENCES leads(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL DEFAULT 'new_message' CHECK(type IN ('new_message')),
+  lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  read_at TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS billing_settings (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   city TEXT NOT NULL,
@@ -105,6 +129,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_lead ON messages(lead_id);
 CREATE INDEX IF NOT EXISTS idx_services_artisan ON services(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
 CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, read_at);
 `);
 
 // Adds a column to an existing table if it isn't already there, so schema
@@ -133,6 +159,15 @@ ensureColumn("artisan_profiles", "state", "TEXT");
 // required.
 ensureColumn("leads", "service_id", "INTEGER REFERENCES services(id)");
 db.exec("CREATE INDEX IF NOT EXISTS idx_leads_service ON leads(service_id)");
+
+// README roadmap #5: chat & notifications. attachment_key is a
+// server-generated storage key (never a client-supplied filename) into the
+// Railway volume mounted at /data -- see server/utils/media.js. read_at is
+// nullable: a message is unread until the recipient views the conversation.
+ensureColumn("messages", "message_type", "TEXT NOT NULL DEFAULT 'text' CHECK(message_type IN ('text','image','video'))");
+ensureColumn("messages", "attachment_key", "TEXT");
+ensureColumn("messages", "attachment_mime", "TEXT");
+ensureColumn("messages", "read_at", "TEXT");
 
 // --- Seed data (only if empty) ---
 const userCount = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;

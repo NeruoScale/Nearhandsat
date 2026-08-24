@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { TrendingUp, Award, ChevronDown, ChevronUp, Star } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { TrendingUp, Award, ChevronDown, ChevronUp, Star, Paperclip, Send } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
+import ChatAttachment from "../components/ChatAttachment";
 import PortfolioManager from "../components/PortfolioManager";
 import ServiceManager from "../components/ServiceManager";
 import LocationManager from "../components/LocationManager";
@@ -24,7 +25,34 @@ function formatDate(sqlDatetime) {
 
 function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
   const { t } = useLanguage();
-  const { messages: thread, loading: threadLoading } = useLeadThread(expanded ? lead.id : null);
+  const { messages: thread, loading: threadLoading, send, sendAttachment } = useLeadThread(expanded ? lead.id : null);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const fileInputRef = useRef(null);
+
+  async function sendDraft() {
+    if (!draft.trim()) return;
+    setBusy(true);
+    try {
+      await send(draft);
+      setDraft("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleFilePick(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    try {
+      await sendAttachment(file);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="card" style={{ padding: 14 }}>
       <div
@@ -67,12 +95,34 @@ function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
                     maxWidth: "85%",
                   }}
                 >
-                  {m.content}
+                  {m.message_type && m.message_type !== "text" ? (
+                    <ChatAttachment messageType={m.message_type} attachmentKey={m.attachment_key} />
+                  ) : (
+                    m.content
+                  )}
                 </div>
               ))}
               {(thread || []).length === 0 && <div style={{ fontSize: 12.5, color: "var(--steel)" }}>{t.dashboard.requestRow.noMessages}</div>}
             </div>
           )}
+
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }} onClick={(e) => e.stopPropagation()}>
+            <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFilePick} style={{ display: "none" }} />
+            <input
+              className="input"
+              style={{ flex: 1, padding: "8px 10px", fontSize: 13 }}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={t.profile.contactFlow.followUpPlaceholder}
+              onKeyDown={(e) => e.key === "Enter" && sendDraft()}
+            />
+            <button className="btn-secondary" style={{ flexShrink: 0, padding: "8px 10px" }} disabled={busy} onClick={() => fileInputRef.current.click()} title={t.profile.contactFlow.attach}>
+              <Paperclip size={14} />
+            </button>
+            <button className="btn-secondary" style={{ flexShrink: 0, padding: "8px 10px" }} disabled={busy} onClick={sendDraft} title={t.profile.contactFlow.send}>
+              <Send size={14} />
+            </button>
+          </div>
 
           {lead.status === "contacted" && (
             <div style={{ marginTop: 12 }}>

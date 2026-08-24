@@ -36,6 +36,13 @@ io.use((socket, next) => {
 io.on("connection", (socket) => {
   markOnline(socket.user.id);
 
+  // README roadmap #5: every authenticated socket auto-joins its own
+  // account-wide room, so a "new message" notification can reach the
+  // recipient in real time regardless of which lead conversation (if any)
+  // they currently have open. This is additive -- lead:join/lead:leave
+  // below are completely unchanged.
+  socket.join(`user:${socket.user.id}`);
+
   // Each lead conversation is a room; only its two participants may join.
   socket.on("lead:join", async (leadId) => {
     const lead = await db.prepare("SELECT * FROM leads WHERE id = ?").get(leadId);
@@ -60,6 +67,8 @@ app.use("/api/leads", require("./routes/leads"));
 app.use("/api/reviews", require("./routes/reviews"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/services", require("./routes/services"));
+app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/media", require("./routes/media"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

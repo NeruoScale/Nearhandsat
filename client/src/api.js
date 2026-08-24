@@ -8,6 +8,21 @@ export function getToken() {
   return token;
 }
 
+// Fetches a private chat attachment (GET /api/media/:key) as a blob and
+// returns an object URL -- a plain <img>/<video> src can't attach the
+// Authorization header this endpoint requires (it's participant-only, not
+// a public static path), so this is the standard SPA workaround. Caller
+// owns the returned URL and must URL.revokeObjectURL() it when done (see
+// components/ChatAttachment.jsx).
+export async function fetchAttachmentUrl(key) {
+  const res = await fetch(`/api/media/${key}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) throw new Error("Could not load attachment.");
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
 function currentTranslations() {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -45,8 +60,21 @@ export const api = {
   createLead: (payload) => request("/leads", { method: "POST", body: payload }),
   myLeads: () => request("/leads/mine"),
   getLead: (id) => request(`/leads/${id}`),
-  leadMessages: (id) => request(`/leads/${id}/messages`),
+  leadMessages: (id, params) => request(`/leads/${id}/messages${params ? `?${new URLSearchParams(params).toString()}` : ""}`),
   sendMessage: (id, content) => request(`/leads/${id}/messages`, { method: "POST", body: { content } }),
+  sendAttachment: async (id, file, caption) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (caption) form.append("caption", caption);
+    const res = await fetch(`/api/leads/${id}/attachments`, {
+      method: "POST",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || currentTranslations().common.somethingWentWrong);
+    return data;
+  },
   confirmHire: (id) => request(`/leads/${id}/hire`, { method: "POST" }),
   selfReport: (id, outcome) => request(`/leads/${id}/self-report`, { method: "POST", body: { outcome } }),
   completeLead: (id) => request(`/leads/${id}/complete`, { method: "POST" }),
@@ -61,4 +89,8 @@ export const api = {
   addService: (payload) => request("/services", { method: "POST", body: payload }),
   updateService: (id, payload) => request(`/services/${id}`, { method: "PUT", body: payload }),
   setServiceStatus: (id, status) => request(`/services/${id}/status`, { method: "PUT", body: { status } }),
+  getNotifications: (params) => request(`/notifications?${new URLSearchParams(params || {}).toString()}`),
+  getUnreadCount: () => request("/notifications/unread-count"),
+  markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: "PUT" }),
+  markAllNotificationsRead: () => request("/notifications/read-all", { method: "POST" }),
 };

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { ArrowLeft, MapPin, Star, CheckCircle2, MessageCircle, Send, X } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
+import { ArrowLeft, MapPin, Star, CheckCircle2, MessageCircle, Send, Paperclip, X } from "lucide-react";
 import { api } from "../api";
 import { ICONS, Tag, Gauge, Modal, formatLocation } from "../components/Shared";
+import ChatAttachment from "../components/ChatAttachment";
 import { useLeadThread } from "../hooks/useLeadThread";
 import { useLanguage } from "../i18n";
 import Auth from "./Auth";
@@ -25,7 +26,23 @@ function ContactFlow({ artisan, serviceId, user, onGuestAuth, onClose, onHired }
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [hired, setHired] = useState(false);
-  const { messages, send } = useLeadThread(leadId);
+  const fileInputRef = useRef(null);
+  const { messages, send, sendAttachment } = useLeadThread(leadId);
+
+  async function handleFilePick(e) {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setBusy(true);
+    setError("");
+    try {
+      await sendAttachment(file);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   // Guests can browse and view profiles freely, but contacting a pro
   // requires an account. Show sign-in/signup inline, right here in the
@@ -148,7 +165,11 @@ function ContactFlow({ artisan, serviceId, user, onGuestAuth, onClose, onHired }
                 maxWidth: "80%",
               }}
             >
-              {m.content}
+              {m.message_type && m.message_type !== "text" ? (
+                <ChatAttachment messageType={m.message_type} attachmentKey={m.attachment_key} />
+              ) : (
+                m.content
+              )}
             </div>
           );
         })}
@@ -161,7 +182,13 @@ function ContactFlow({ artisan, serviceId, user, onGuestAuth, onClose, onHired }
         style={{ minHeight: 60, marginTop: 12, resize: "vertical" }}
       />
       {error && <div className="error-text">{error}</div>}
-      <button className="btn-secondary" style={{ width: "100%", marginTop: 8 }} disabled={busy} onClick={sendMore}>{t.profile.contactFlow.send}</button>
+      <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <input ref={fileInputRef} type="file" accept="image/*,video/*" onChange={handleFilePick} style={{ display: "none" }} />
+        <button className="btn-secondary" style={{ flexShrink: 0, padding: "10px 12px" }} disabled={busy} onClick={() => fileInputRef.current.click()} title={t.profile.contactFlow.attach}>
+          <Paperclip size={14} />
+        </button>
+        <button className="btn-secondary" style={{ flex: 1 }} disabled={busy} onClick={sendMore}>{t.profile.contactFlow.send}</button>
+      </div>
 
       <div style={{ marginTop: 18, padding: 12, background: "#FBEBD4", borderRadius: 6, fontSize: 12, color: "var(--amber-dark)" }}>
         {t.profile.contactFlow.hireBanner}

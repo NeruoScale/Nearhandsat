@@ -3,6 +3,7 @@ import { Wrench, LogOut } from "lucide-react";
 import { setToken } from "./api";
 import { connectSocket, disconnectSocket } from "./socket";
 import { useLanguage } from "./i18n";
+import NotificationBell from "./components/NotificationBell";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Search from "./pages/Search";
@@ -110,9 +111,12 @@ export default function App() {
             ))}
           </div>
           {user ? (
-            <button onClick={signOut} style={{ background: "none", border: "none", color: "#C7CEDD", display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-              <LogOut size={14} /> {user.name.split(" ")[0]}
-            </button>
+            <>
+              <NotificationBell onNavigate={() => setTab(user.role === "artisan" ? "dashboard" : "leads")} />
+              <button onClick={signOut} style={{ background: "none", border: "none", color: "#C7CEDD", display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+                <LogOut size={14} /> {user.name.split(" ")[0]}
+              </button>
+            </>
           ) : (
             <button onClick={() => promptAuth("login", "client")} style={{ background: "none", border: "none", color: "#C7CEDD", fontSize: 12 }}>
               {t.signIn.toUpperCase()}
@@ -139,7 +143,7 @@ export default function App() {
             onGuestAuth={onGuestAuth}
           />
         )}
-        {tab === "leads" && user && <MyLeads />}
+        {tab === "leads" && user && <MyLeads user={user} />}
         {tab === "dashboard" && user && <ArtisanDashboard user={user} />}
         {tab === "admin" && user && <AdminDashboard />}
       </div>

@@ -4,3 +4,5 @@ node_modules/
 *.db-wal
 dist/
 .env
+server/chat-media/
+server/test/chat-media-test-*/

@@ -115,6 +115,38 @@ CREATE TABLE IF NOT EXISTS services (
 -- stays valid.
 ALTER TABLE leads ADD COLUMN IF NOT EXISTS service_id INTEGER REFERENCES services(id);
 
+-- README roadmap #5: chat & notifications. One conversation per lead (1:1)
+-- -- service/client/artisan deliberately not duplicated, derived via
+-- lead_id -> leads exactly like leads.service_id -> services already does.
+-- messages.lead_id remains the actual join key for the message thread and
+-- the Socket.IO room name (lead:<id>), both unchanged.
+CREATE TABLE IF NOT EXISTS conversations (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  lead_id INTEGER NOT NULL UNIQUE REFERENCES leads(id) ON DELETE CASCADE,
+  created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS'),
+  updated_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+);
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL DEFAULT 'new_message' CHECK(type IN ('new_message')),
+  lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+  message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  read_at TEXT,
+  created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
+);
+
+-- messages already has live production data, so these use ALTER ... ADD
+-- COLUMN IF NOT EXISTS rather than the CREATE TABLE above, same as
+-- leads.service_id. attachment_key is a server-generated storage key
+-- (never a client-supplied filename) into the Railway volume mounted at
+-- /data -- see server/utils/media.js.
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT 'text' CHECK(message_type IN ('text','image','video'));
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_key TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_mime TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_leads_artisan ON leads(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_leads_client ON leads(client_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
@@ -126,6 +158,8 @@ CREATE INDEX IF NOT EXISTS idx_messages_lead ON messages(lead_id);
 CREATE INDEX IF NOT EXISTS idx_services_artisan ON services(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_services_status ON services(status);
 CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, read_at);
 `;
 
 if (!process.env.DATABASE_URL) {

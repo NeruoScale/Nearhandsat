@@ -52,5 +52,16 @@ export function useLeadThread(leadId) {
     [leadId]
   );
 
-  return { messages, loading, send };
+  const sendAttachment = useCallback(
+    async (file, caption) => {
+      const message = await api.sendAttachment(leadId, file, caption);
+      const socket = socketRef.current;
+      if (!socket || !socket.connected) {
+        setMessages((prev) => (prev.some((m) => m.id === message.id) ? prev : [...prev, message]));
+      }
+    },
+    [leadId]
+  );
+
+  return { messages, loading, send, sendAttachment };
 }
