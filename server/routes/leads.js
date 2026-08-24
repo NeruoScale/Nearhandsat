@@ -44,6 +44,29 @@ async function notifyNewMessage(req, lead, message) {
   req.app.get("io").to(`user:${recipientId}`).emit("notification:new", notification);
 }
 
+// README roadmap #6: notifies the client that their completed job is ready
+// to review. No message is involved, hence message_id is NULL here --
+// notifications.message_id was made nullable specifically for this. Reuses
+// the exact same table/route/socket-event/NotificationBell UI as
+// notifyNewMessage above -- sender_name carries the professional's name so
+// the client-side rendering needs no new field, only a type-aware label.
+async function notifyReviewRequest(req, lead) {
+  const info = await db
+    .prepare("INSERT INTO notifications (user_id, type, lead_id, message_id) VALUES (?, 'review_request', ?, NULL)")
+    .run(lead.client_id, lead.id);
+  const notification = await db
+    .prepare(
+      `SELECT n.*, l.service_id, s.title AS service_title, a.name AS sender_name
+       FROM notifications n
+       JOIN leads l ON l.id = n.lead_id
+       LEFT JOIN services s ON s.id = l.service_id
+       JOIN users a ON a.id = l.artisan_id
+       WHERE n.id = ?`
+    )
+    .get(info.lastInsertRowid);
+  req.app.get("io").to(`user:${lead.client_id}`).emit("notification:new", notification);
+}
+
 // Client contacts an artisan -> creates a lead + first message. Roadmap #4:
 // when serviceId is given, the artisan is derived from the service record on
 // the server -- an artisanId in the request body is never trusted once a
@@ -170,6 +193,19 @@ function assertParticipant(req, res, lead) {
   }
   return true;
 }
+
+// README roadmap #6: the review for a lead, if one exists -- lets the
+// client's own UI know whether they've already reviewed this job (so
+// MyLeads.jsx can stop offering "LEAVE A REVIEW" once one exists) and lets
+// the professional see the review on their own job. Either participant may
+// read it; only POST /api/reviews (client-only, completed-lead-only) can
+// create one.
+router.get("/:id/review", requireAuth, async (req, res) => {
+  const lead = await db.prepare("SELECT * FROM leads WHERE id = ?").get(req.params.id);
+  if (!assertParticipant(req, res, lead)) return;
+  const review = await db.prepare("SELECT * FROM reviews WHERE lead_id = ?").get(req.params.id);
+  res.json(review || null);
+});
 
 // Paginated, newest-page-last (ascending overall, matching chat UI order)
 // so the browser never has to load a lead's entire history at once.
@@ -301,14 +337,28 @@ router.post("/:id/self-report", requireAuth, requireRole("artisan"), async (req,
   res.json({ ok: true, status: outcome });
 });
 
-// Mark a hired job as completed -- opens up the review flow
-router.post("/:id/complete", requireAuth, async (req, res) => {
+// Mark a hired job as completed -- opens up the review flow.
+//
+// README roadmap #6: this used to be reachable by either participant
+// (requireAuth + assertParticipant, which accepts client_id OR
+// artisan_id) -- and the client-facing UI (MyLeads.jsx) was in fact the
+// only place that called it, meaning the *client* was the one completing
+// jobs, not the professional. Fixed here: requireRole("artisan") plus an
+// explicit lead.artisan_id === req.user.id check (assertParticipant is
+// deliberately not reused, since it would still accept the client).
+// MyLeads.jsx's "MARK JOB COMPLETE" button is removed as part of this fix;
+// ArtisanDashboard.jsx gains the equivalent professional-facing action.
+router.post("/:id/complete", requireAuth, requireRole("artisan"), async (req, res) => {
   const lead = await db.prepare("SELECT * FROM leads WHERE id = ?").get(req.params.id);
-  if (!assertParticipant(req, res, lead)) return;
+  if (!lead) return res.status(404).json({ error: "Lead not found." });
+  if (lead.artisan_id !== req.user.id) {
+    return res.status(403).json({ error: "Only the professional on this job can mark it complete." });
+  }
   if (lead.status !== "hired") {
     return res.status(400).json({ error: "Only hired jobs can be marked complete." });
   }
   await db.prepare("UPDATE leads SET status = 'completed', completed_at = datetime('now') WHERE id = ?").run(lead.id);
+  await notifyReviewRequest(req, lead);
   res.json({ ok: true, status: "completed" });
 });
 

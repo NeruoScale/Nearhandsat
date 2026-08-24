@@ -128,6 +128,8 @@ export const translations = {
       markComplete: "MARK JOB COMPLETE",
       leaveReview: "LEAVE A REVIEW",
       noRequests: "No requests yet — search for a pro to get started.",
+      reviewSubmitted: "Review submitted",
+      reviewRequestNotification: "Your job is complete — leave a review.",
       reviewBox: {
         leaveReviewFor: (name) => `Leave a review for ${name}`,
         placeholder: "How did the job go?",
@@ -393,6 +395,8 @@ export const translations = {
       markComplete: "MARQUER COMME TERMINÉ",
       leaveReview: "LAISSER UN AVIS",
       noRequests: "Aucune demande pour le moment — recherchez un pro pour commencer.",
+      reviewSubmitted: "Avis envoyé",
+      reviewRequestNotification: "Votre travail est terminé — laissez un avis.",
       reviewBox: {
         leaveReviewFor: (name) => `Laisser un avis pour ${name}`,
         placeholder: "Comment s'est passé le travail ?",
@@ -655,6 +659,8 @@ export const translations = {
       markComplete: "تحديد العمل كمكتمل",
       leaveReview: "أضف تقييمًا",
       noRequests: "لا توجد طلبات بعد — ابحث عن محترف للبدء.",
+      reviewSubmitted: "تم إرسال التقييم",
+      reviewRequestNotification: "اكتمل عملك — أضف تقييمًا.",
       reviewBox: {
         leaveReviewFor: (name) => `أضف تقييمًا لـ ${name}`,
         placeholder: "كيف سار العمل؟",

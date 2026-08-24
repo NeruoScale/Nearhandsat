@@ -11,14 +11,21 @@ router.get("/", async (req, res) => {
   const limit = Math.min(50, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const offset = Math.max(0, parseInt(req.query.offset, 10) || 0);
   const total = (await db.prepare("SELECT COUNT(*) AS c FROM notifications WHERE user_id = ?").get(req.user.id)).c;
+  // LEFT JOIN messages, not JOIN: a review_request notification (roadmap
+  // #6) has no message_id, and an inner join would silently drop every
+  // one of those rows from the list. sender_name falls back to the lead's
+  // artisan when there's no message sender to name -- exactly right for
+  // a "your job with [professional] is complete" notification.
   const results = await db
     .prepare(
-      `SELECT n.*, l.service_id, s.title AS service_title, u.name AS sender_name, m.content AS message_preview
+      `SELECT n.*, l.service_id, s.title AS service_title,
+        COALESCE(mu.name, au.name) AS sender_name, m.content AS message_preview
        FROM notifications n
        JOIN leads l ON l.id = n.lead_id
        LEFT JOIN services s ON s.id = l.service_id
-       JOIN messages m ON m.id = n.message_id
-       JOIN users u ON u.id = m.sender_id
+       LEFT JOIN messages m ON m.id = n.message_id
+       LEFT JOIN users mu ON mu.id = m.sender_id
+       JOIN users au ON au.id = l.artisan_id
        WHERE n.user_id = ?
        ORDER BY n.created_at DESC, n.id DESC
        LIMIT ? OFFSET ?`

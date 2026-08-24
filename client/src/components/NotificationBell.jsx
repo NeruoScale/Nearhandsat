@@ -89,7 +89,7 @@ export default function NotificationBell({ onNavigate }) {
               <div style={{ fontWeight: 600, color: "var(--navy)" }}>{n.sender_name}</div>
               {n.service_title && <div style={{ color: "var(--steel)", fontSize: 11 }}>{t.services.relatedTo(n.service_title)}</div>}
               <div style={{ color: "#3C3A33", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {n.message_preview}
+                {n.type === "review_request" ? t.myLeads.reviewRequestNotification : n.message_preview}
               </div>
             </div>
           ))}

@@ -286,12 +286,16 @@ test("status: an invalid status value is rejected", async () => {
 });
 
 test("status: an invalid transition (completing a lead that was never hired) is rejected", async () => {
+  // README roadmap #6: completion is professional-only now (was reachable
+  // by either participant when this test was first written) -- using the
+  // artisan's own token here so this test actually exercises the status-
+  // transition check it's named for, rather than the role check.
   const artisanToken = await login("artisan1@example.com");
   const serviceId = await publishedService(artisanToken, { title: "Status test D" });
   const clientToken = await login("client1@example.com");
   const created = await api("/api/leads", { method: "POST", token: clientToken, body: { serviceId, message: "hi" } });
 
-  const { status } = await api(`/api/leads/${created.data.id}/complete`, { method: "POST", token: clientToken });
+  const { status } = await api(`/api/leads/${created.data.id}/complete`, { method: "POST", token: artisanToken });
   assert.equal(status, 400);
 });
 

@@ -127,12 +127,16 @@ CREATE TABLE IF NOT EXISTS conversations (
   updated_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
 );
 
+-- README roadmap #6: message_id is nullable and 'review_request' is valid
+-- from the start here -- a completion event has no associated message.
+-- (A database that already has this table from roadmap #5 gets migrated
+-- below via ALTER, since it already has live data.)
 CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL DEFAULT 'new_message' CHECK(type IN ('new_message')),
+  type TEXT NOT NULL DEFAULT 'new_message' CHECK(type IN ('new_message','review_request')),
   lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-  message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
   read_at TEXT,
   created_at TEXT DEFAULT TO_CHAR(NOW(), 'YYYY-MM-DD HH24:MI:SS')
 );
@@ -146,6 +150,25 @@ ALTER TABLE messages ADD COLUMN IF NOT EXISTS message_type TEXT NOT NULL DEFAULT
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_key TEXT;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS attachment_mime TEXT;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS read_at TEXT;
+
+-- README roadmap #6: relax the roadmap #5 notifications shape for a
+-- database that already has it (confirmed via production's actual
+-- pg_constraint entry before writing this: the column-level CHECK's
+-- auto-generated name is notifications_type_check). Both statements are
+-- safe to run on every boot: DROP NOT NULL is a no-op if already nullable,
+-- and DROP CONSTRAINT IF EXISTS + ADD CONSTRAINT is idempotent since the
+-- DROP always clears whatever this same migration added last time before
+-- the ADD runs.
+ALTER TABLE notifications ALTER COLUMN message_id DROP NOT NULL;
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN ('new_message','review_request'));
+
+-- README roadmap #6: a lead can have at most one review -- enforced at the
+-- DB level (the route already checked this at the application level, but
+-- that alone can't prevent a race between two near-simultaneous requests).
+-- Confirmed against production first: zero existing leads had more than
+-- one review, so this is safe to add without any cleanup.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_lead_unique ON reviews(lead_id);
 
 CREATE INDEX IF NOT EXISTS idx_leads_artisan ON leads(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_leads_client ON leads(client_id);

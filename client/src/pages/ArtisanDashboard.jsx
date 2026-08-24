@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { TrendingUp, Award, ChevronDown, ChevronUp, Star, Paperclip, Send } from "lucide-react";
+import { TrendingUp, Award, ChevronDown, ChevronUp, Star, Paperclip, Send, CheckCircle2 } from "lucide-react";
 import { api } from "../api";
 import { Tag } from "../components/Shared";
 import ChatAttachment from "../components/ChatAttachment";
@@ -23,7 +23,7 @@ function formatDate(sqlDatetime) {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
-function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
+function RequestRow({ lead, user, expanded, onToggle, onSelfReport, onComplete }) {
   const { t } = useLanguage();
   const { messages: thread, loading: threadLoading, send, sendAttachment } = useLeadThread(expanded ? lead.id : null);
   const [draft, setDraft] = useState("");
@@ -135,6 +135,19 @@ function RequestRow({ lead, user, expanded, onToggle, onSelfReport }) {
               </div>
             </div>
           )}
+
+          {/* README roadmap #6: completion is now professional-only (server/routes/leads.js) --
+              this is the completion action's only home in the UI now; MyLeads.jsx's
+              client-facing button was removed as part of the same fix. */}
+          {lead.status === "hired" && (
+            <button
+              className="btn-secondary"
+              style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6 }}
+              onClick={(e) => { e.stopPropagation(); onComplete(lead.id); }}
+            >
+              <CheckCircle2 size={14} /> {t.myLeads.markComplete}
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -159,6 +172,11 @@ export default function ArtisanDashboard({ user }) {
 
   async function selfReport(id, outcome) {
     await api.selfReport(id, outcome);
+    load();
+  }
+
+  async function completeJob(id) {
+    await api.completeLead(id);
     load();
   }
 
@@ -230,6 +248,7 @@ export default function ArtisanDashboard({ user }) {
             expanded={expandedId === l.id}
             onToggle={() => toggleExpand(l)}
             onSelfReport={selfReport}
+            onComplete={completeJob}
           />
         ))}
         {leads.length === 0 && <div style={{ fontSize: 13, color: "var(--steel)" }}>{t.dashboard.noLeads}</div>}

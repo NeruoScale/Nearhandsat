@@ -78,6 +78,7 @@ export const api = {
   confirmHire: (id) => request(`/leads/${id}/hire`, { method: "POST" }),
   selfReport: (id, outcome) => request(`/leads/${id}/self-report`, { method: "POST", body: { outcome } }),
   completeLead: (id) => request(`/leads/${id}/complete`, { method: "POST" }),
+  getLeadReview: (id) => request(`/leads/${id}/review`),
   submitReview: (payload) => request("/reviews", { method: "POST", body: payload }),
   adminStats: () => request("/admin/stats"),
   adminFlagged: (params) => request(`/admin/flagged?${new URLSearchParams(params || {}).toString()}`),

@@ -136,16 +136,23 @@ export default function MyLeads({ user }) {
   const [leads, setLeads] = useState([]);
   const [reviewing, setReviewing] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
+  const [reviewedIds, setReviewedIds] = useState(() => new Set());
 
   function load() {
-    api.myLeads().then(setLeads);
+    api.myLeads().then((rows) => {
+      setLeads(rows);
+      // README roadmap #6: marking a job complete is now a professional-only
+      // action (see server/routes/leads.js) -- the client's role here is
+      // just to leave a review once one exists. Checking each completed
+      // lead's own review keeps "LEAVE A REVIEW" from being offered again
+      // after a successful submission.
+      const completed = rows.filter((l) => l.status === "completed");
+      Promise.all(completed.map((l) => api.getLeadReview(l.id).then((r) => (r ? l.id : null)))).then((ids) =>
+        setReviewedIds(new Set(ids.filter(Boolean)))
+      );
+    });
   }
   useEffect(load, []);
-
-  async function markComplete(id) {
-    await api.completeLead(id);
-    load();
-  }
 
   return (
     <div>
@@ -172,14 +179,13 @@ export default function MyLeads({ user }) {
 
             {expandedId === l.id && <LeadThread leadId={l.id} userId={user.id} />}
 
-            {l.status === "hired" && (
-              <button className="btn-secondary" style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6 }} onClick={() => markComplete(l.id)}>
-                <CheckCircle2 size={14} /> {t.myLeads.markComplete}
-              </button>
-            )}
-
-            {l.status === "completed" && reviewing !== l.id && (
+            {l.status === "completed" && !reviewedIds.has(l.id) && reviewing !== l.id && (
               <button className="btn-secondary" style={{ marginTop: 10 }} onClick={() => setReviewing(l.id)}>{t.myLeads.leaveReview}</button>
+            )}
+            {l.status === "completed" && reviewedIds.has(l.id) && (
+              <div style={{ marginTop: 10, fontSize: 12, color: "var(--green)", display: "flex", alignItems: "center", gap: 6 }}>
+                <CheckCircle2 size={14} /> {t.myLeads.reviewSubmitted}
+              </div>
             )}
 
             {reviewing === l.id && (

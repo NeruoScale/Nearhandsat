@@ -80,12 +80,18 @@ CREATE TABLE IF NOT EXISTS conversations (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- README roadmap #6: message_id is nullable and 'review_request' is a valid
+-- type from the start here -- a completion event has no associated
+-- message. (A database that already has this table from roadmap #5, where
+-- message_id was NOT NULL and only 'new_message' was valid, gets migrated
+-- below via ensureColumn/table-rebuild, since SQLite can't ALTER a
+-- column's NOT NULL or CHECK constraints in place.)
 CREATE TABLE IF NOT EXISTS notifications (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL DEFAULT 'new_message' CHECK(type IN ('new_message')),
+  type TEXT NOT NULL DEFAULT 'new_message' CHECK(type IN ('new_message','review_request')),
   lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
-  message_id INTEGER NOT NULL REFERENCES messages(id) ON DELETE CASCADE,
+  message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
   read_at TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
@@ -168,6 +174,40 @@ ensureColumn("messages", "message_type", "TEXT NOT NULL DEFAULT 'text' CHECK(mes
 ensureColumn("messages", "attachment_key", "TEXT");
 ensureColumn("messages", "attachment_mime", "TEXT");
 ensureColumn("messages", "read_at", "TEXT");
+
+// README roadmap #6: job completion + reviews.
+// A lead can have at most one review -- enforced at the DB level (the
+// route already checked this at the application level, but that alone
+// can't prevent a race between two near-simultaneous requests).
+db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_lead_unique ON reviews(lead_id)");
+
+// If notifications still has the roadmap #5 shape (message_id NOT NULL,
+// only 'new_message' allowed), rebuild it -- SQLite can't ALTER a
+// column's NOT NULL or CHECK constraints in place. A brand-new database
+// never hits this: the CREATE TABLE IF NOT EXISTS above already creates
+// the roadmap #6 shape directly.
+{
+  const notifCols = db.prepare("PRAGMA table_info(notifications)").all();
+  const messageIdCol = notifCols.find((c) => c.name === "message_id");
+  if (messageIdCol && messageIdCol.notnull === 1) {
+    db.exec(`
+      CREATE TABLE notifications_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type TEXT NOT NULL DEFAULT 'new_message' CHECK(type IN ('new_message','review_request')),
+        lead_id INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+        message_id INTEGER REFERENCES messages(id) ON DELETE CASCADE,
+        read_at TEXT,
+        created_at TEXT DEFAULT (datetime('now'))
+      );
+      INSERT INTO notifications_new SELECT id, user_id, type, lead_id, message_id, read_at, created_at FROM notifications;
+      DROP TABLE notifications;
+      ALTER TABLE notifications_new RENAME TO notifications;
+      CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
+      CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, read_at);
+    `);
+  }
+}
 
 // --- Seed data (only if empty) ---
 const userCount = db.prepare("SELECT COUNT(*) AS c FROM users").get().c;
