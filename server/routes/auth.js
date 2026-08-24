@@ -7,7 +7,7 @@ const { SECRET } = require("../middleware/auth");
 const router = express.Router();
 
 router.post("/register", async (req, res) => {
-  const { role, name, email, password, city, country, state, trade, bio } = req.body || {};
+  const { role, name, email, password, city, country, state, trade, bio, phone } = req.body || {};
   if (!role || !name || !email || !password) {
     return res.status(400).json({ error: "Name, email, password, and account type are required." });
   }
@@ -19,8 +19,8 @@ router.post("/register", async (req, res) => {
 
   const hash = bcrypt.hashSync(password, 8);
   const info = await db
-    .prepare("INSERT INTO users (role, name, email, password_hash, city) VALUES (?,?,?,?,?)")
-    .run(role, name, email, hash, city || null);
+    .prepare("INSERT INTO users (role, name, email, password_hash, city, phone) VALUES (?,?,?,?,?,?)")
+    .run(role, name, email, hash, city || null, phone ? phone.trim() : null);
   const userId = info.lastInsertRowid;
 
   if (role === "artisan") {

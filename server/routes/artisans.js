@@ -107,7 +107,7 @@ router.get("/:id", async (req, res) => {
 });
 
 router.put("/me", requireAuth, requireRole("artisan"), async (req, res) => {
-  const { bio, city, trade, latitude, longitude, service_radius_km } = req.body || {};
+  const { bio, city, trade, latitude, longitude, service_radius_km, phone } = req.body || {};
   await db.prepare(
     `UPDATE artisan_profiles SET
       bio = COALESCE(?, bio),
@@ -118,6 +118,12 @@ router.put("/me", requireAuth, requireRole("artisan"), async (req, res) => {
       service_radius_km = COALESCE(?, service_radius_km)
      WHERE user_id = ?`
   ).run(bio, city, trade, latitude, longitude, service_radius_km, req.user.id);
+  // README roadmap #7A, Phase B: phone lives on users (role-agnostic),
+  // not artisan_profiles -- same optional/nullable contract as at
+  // registration.
+  if (phone !== undefined) {
+    await db.prepare("UPDATE users SET phone = ? WHERE id = ?").run(phone ? phone.trim() : null, req.user.id);
+  }
   res.json({ ok: true });
 });
 

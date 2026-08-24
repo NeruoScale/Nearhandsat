@@ -69,6 +69,7 @@ app.use("/api/admin", require("./routes/admin"));
 app.use("/api/services", require("./routes/services"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/media", require("./routes/media"));
+app.use("/api/admin/candidates", require("./routes/adminCandidates"));
 
 app.get("/api/health", (req, res) => res.json({ ok: true }));
 

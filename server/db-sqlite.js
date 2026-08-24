@@ -125,6 +125,102 @@ CREATE TABLE IF NOT EXISTS services (
   updated_at TEXT
 );
 
+-- README roadmap #7A, Phase A: category taxonomy foundation. Purely
+-- additive lookup table layered on top of the existing trade strings --
+-- 'code' is the exact existing artisan_profiles.trade / services.category /
+-- billing_settings.category string value, never a new/renamed identifier.
+-- No existing column, query, or data changes as a result of this table.
+CREATE TABLE IF NOT EXISTS categories (
+  code TEXT PRIMARY KEY,
+  name_en TEXT NOT NULL,
+  name_fr TEXT NOT NULL,
+  name_ar TEXT NOT NULL,
+  parent_code TEXT REFERENCES categories(code),
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- README roadmap #7A, Phase C: candidate schema (external professional
+-- discovery). Deliberately has NO foreign key to users/artisan_profiles --
+-- a candidate is not a registered professional, and this table must never
+-- imply otherwise. category_code is the only link to existing marketplace
+-- data (the roadmap #7A Phase A categories table), and is nullable since a
+-- discovery source doesn't always map cleanly to one of our 25 trades.
+-- Country-required, city/state optional: mirrors artisan_profiles' own
+-- global location model (see server/utils/geo.js) rather than inventing a
+-- new one. duplicate_of_candidate_id is a self-reference used by roadmap
+-- #7A Phase E's dedup logic to point a duplicate at the candidate it was
+-- merged into, without ever deleting the duplicate row.
+CREATE TABLE IF NOT EXISTS candidates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category_code TEXT REFERENCES categories(code),
+  display_name TEXT,
+  normalized_name TEXT,
+  country TEXT NOT NULL,
+  state TEXT,
+  city TEXT,
+  address_raw TEXT,
+  latitude REAL,
+  longitude REAL,
+  phone TEXT,
+  phone_normalized TEXT,
+  email TEXT,
+  website TEXT,
+  website_domain TEXT,
+  status TEXT NOT NULL DEFAULT 'discovered' CHECK(status IN ('discovered','qualified','rejected','duplicate','invalid','contact_ready')),
+  duplicate_of_candidate_id INTEGER REFERENCES candidates(id),
+  first_discovered_at TEXT DEFAULT (datetime('now')),
+  last_seen_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT
+);
+
+-- Provenance: many-to-one, NOT a single candidates.source column -- the
+-- same real-world candidate can be independently discovered by more than
+-- one source/provider, and every one of those sightings must stay
+-- individually attributable (attribution/license obligations differ per
+-- provider, e.g. OSM's ODbL). raw_payload is intentionally NOT "whatever
+-- the provider returned" -- callers store only the specific fields actually
+-- used, per the "do not persist raw provider payloads unnecessarily"
+-- constraint. The UNIQUE constraint makes re-ingesting the same
+-- provider/external_id a no-op rather than a duplicate row.
+CREATE TABLE IF NOT EXISTS candidate_sources (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  external_id TEXT,
+  source_url TEXT,
+  license TEXT,
+  raw_payload TEXT,
+  fetched_at TEXT DEFAULT (datetime('now')),
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(provider, external_id)
+);
+
+-- History log, distinct from candidates.status -- status is "where a
+-- candidate is right now," this is "everything that happened to it."
+-- detail is free-text (JSON-encoded by callers) rather than structured
+-- columns, e.g. for an 'identity_match_found' event: {"matched_user_id":5,
+-- "signals":["phone"]} -- deliberately NOT a real FK to users, so this
+-- table can record a *possible* match for admin review without ever
+-- wiring candidates to real accounts at the schema level.
+CREATE TABLE IF NOT EXISTS candidate_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  candidate_id INTEGER NOT NULL REFERENCES candidates(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  from_status TEXT,
+  to_status TEXT,
+  detail TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_candidates_status ON candidates(status);
+CREATE INDEX IF NOT EXISTS idx_candidates_category ON candidates(category_code);
+CREATE INDEX IF NOT EXISTS idx_candidates_country_city ON candidates(country, city);
+CREATE INDEX IF NOT EXISTS idx_candidates_phone_normalized ON candidates(phone_normalized);
+CREATE INDEX IF NOT EXISTS idx_candidates_website_domain ON candidates(website_domain);
+CREATE INDEX IF NOT EXISTS idx_candidate_sources_candidate ON candidate_sources(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_candidate_events_candidate ON candidate_events(candidate_id);
+
 CREATE INDEX IF NOT EXISTS idx_leads_artisan ON leads(artisan_id);
 CREATE INDEX IF NOT EXISTS idx_leads_client ON leads(client_id);
 CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
@@ -158,6 +254,14 @@ ensureColumn("artisan_profiles", "service_radius_km", "INTEGER");
 
 ensureColumn("artisan_profiles", "country", "TEXT");
 ensureColumn("artisan_profiles", "state", "TEXT");
+
+// README roadmap #7A, Phase B: nullable, optional phone -- no existing
+// account is required to have one, and none is backfilled. Applies to
+// both roles (client and artisan), same as email, since a future phase's
+// NearHandsAT-identity matching needs it regardless of role. Never
+// selected by any public-facing query (see routes/artisans.js).
+ensureColumn("users", "phone", "TEXT");
+db.exec("CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone)");
 
 // README roadmap #4: nullable so every pre-existing lead (created before
 // this column existed, or via the generic "Contact" flow with no specific
@@ -206,6 +310,20 @@ db.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_lead_unique ON reviews(le
       CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);
       CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, read_at);
     `);
+  }
+}
+
+// README roadmap #7A, Phase A: category taxonomy seed. Runs on every boot
+// (not just "if empty" like the demo data below) via INSERT OR IGNORE, so
+// it stays in sync if a new trade is ever added to TRADES, without needing
+// a one-off migration each time. Never overwrites an existing row.
+{
+  const { CATEGORIES } = require("./constants/categories");
+  const insertCategory = db.prepare(
+    "INSERT OR IGNORE INTO categories (code, name_en, name_fr, name_ar, parent_code) VALUES (?,?,?,?,?)"
+  );
+  for (const c of CATEGORIES) {
+    insertCategory.run(c.code, c.name_en, c.name_fr, c.name_ar, c.parent_code);
   }
 }
 

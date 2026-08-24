@@ -9,7 +9,7 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
   const { t } = useLanguage();
   const [mode, setMode] = useState(initialMode);
   const [role, setRole] = useState(lockRole || initialRole);
-  const [form, setForm] = useState({ name: "", email: "", password: "", city: "", trade: TRADES[0], bio: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", city: "", trade: TRADES[0], bio: "", phone: "" });
   const [location, setLocation] = useState({ country: "", state: "", city: "" });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -95,7 +95,10 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
         <input className="input" placeholder={t.auth.email} value={form.email} onChange={set("email")} style={{ marginBottom: 10 }} />
         <input className="input" type="password" placeholder={t.auth.password} value={form.password} onChange={set("password")} style={{ marginBottom: 10 }} />
         {mode === "register" && role === "client" && (
-          <input className="input" placeholder={t.auth.city} value={form.city} onChange={set("city")} style={{ marginBottom: 10 }} />
+          <>
+            <input className="input" placeholder={t.auth.city} value={form.city} onChange={set("city")} style={{ marginBottom: 10 }} />
+            <input className="input" placeholder={t.auth.phone} value={form.phone} onChange={set("phone")} style={{ marginBottom: 10 }} />
+          </>
         )}
         {mode === "register" && role === "artisan" && (
           <>
@@ -105,6 +108,7 @@ export default function Auth({ onAuth, initialMode = "login", initialRole = "cli
             <div style={{ marginBottom: 10 }}>
               <TradeCombobox value={form.trade} onChange={(v) => setForm({ ...form, trade: v })} placeholder={t.auth.trade} />
             </div>
+            <input className="input" placeholder={t.auth.phone} value={form.phone} onChange={set("phone")} style={{ marginBottom: 10 }} />
             <textarea className="input" placeholder={t.auth.bio} value={form.bio} onChange={set("bio")} style={{ marginBottom: 10, minHeight: 70, resize: "vertical" }} />
           </>
         )}
