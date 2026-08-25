@@ -13,13 +13,21 @@
 //   - osm3s.copyright confirms ODbL licensing; every candidate_sources row
 //     this provider writes must carry that attribution.
 //
-// City-level scoping was NOT verified to work reliably (a boundary-name
-// query for "Sétif" returned zero results in this session's testing,
-// likely because the real admin boundary relation uses a different exact
-// name/tagging than assumed) -- rather than ship an unverified query
-// shape, this provider only queries at country level and applies `city`
-// as a best-effort post-filter against addr:city/tags.name, consistent
-// with "do not assume a data structure you haven't inspected."
+// City-level scoping: NOT reliable in general (a boundary-name query for
+// "Sétif", Algeria returned zero results during #7A's testing, likely
+// because the real admin boundary relation there uses a different exact
+// name/tagging than assumed) -- so this provider does NOT guess a
+// city-boundary admin_level itself, and defaults to country-level +
+// `city` post-filter exactly as before. README roadmap #7C verified LIVE
+// that major, densely-mapped US cities (Chicago, Houston) DO resolve
+// reliably via area["name"="<city>"]["boundary"="administrative"]
+// ["admin_level"="8"] -- but that admin_level value is a US-specific OSM
+// convention, not a global one, so it is never hardcoded here. A caller
+// that has independently verified a working admin_level for a specific
+// area (the same way #7C did before using it) may opt into an
+// area-scoped query by passing BOTH `city` and `areaAdminLevel` -- the
+// provider stays country-agnostic; the verified assumption lives with
+// the caller, not in this file.
 //
 // Category coverage is intentionally partial: OSM_TAG_BY_CATEGORY only
 // maps trades with a well-established OSM tagging convention. A category
@@ -67,11 +75,19 @@ function isoCodeFor(countryName) {
   return match ? match.isoCode : null;
 }
 
-function buildQuery(isoCode, tag, limit) {
+function buildQuery(isoCode, tag, limit, { city, areaAdminLevel } = {}) {
   const filter = `["${tag.key}"="${tag.value}"]`;
+  // Area-scoped variant: only used when the caller supplies BOTH city and
+  // areaAdminLevel (see file header) -- an explicit, verified opt-in, not
+  // an inferred default. Falls back to the existing country-level query
+  // (unchanged from #7A) in every other case.
+  const areaClause =
+    city && areaAdminLevel
+      ? `area["name"="${city}"]["boundary"="administrative"]["admin_level"="${areaAdminLevel}"]->.searchArea;`
+      : `area["ISO3166-1"="${isoCode}"][admin_level=2]->.searchArea;`;
   return (
     `[out:json][timeout:25];` +
-    `area["ISO3166-1"="${isoCode}"][admin_level=2]->.searchArea;` +
+    areaClause +
     `(node${filter}(area.searchArea);way${filter}(area.searchArea););` +
     `out center tags ${limit};`
   );
@@ -92,13 +108,23 @@ function elementToCandidate({ element, categoryCode, countryName, city }) {
     return null;
   }
 
+  // README roadmap #7C: social/contact-profile tags, captured for
+  // enrichment-feasibility ANALYSIS only (contact-method availability
+  // measurement) -- deliberately still not "whatever the provider
+  // returned": only the specific handful of tag keys #7C's report asks
+  // about, same restraint as the phone/email/website capture below.
+  const socialTags = {};
+  for (const key of ["contact:facebook", "contact:instagram", "contact:linkedin", "contact:twitter", "contact:youtube"]) {
+    if (tags[key]) socialTags[key] = tags[key];
+  }
+
   return {
     provider: "osm",
     external_id: `${element.type}/${element.id}`,
     display_name: tags.name || null,
     category_code: categoryCode,
     country: countryName,
-    state: null,
+    state: tags["addr:state"] || null,
     city: addrCity || city || null,
     address_raw: [tags["addr:housenumber"], tags["addr:street"], tags["addr:city"]].filter(Boolean).join(" ") || null,
     latitude: lat,
@@ -108,11 +134,18 @@ function elementToCandidate({ element, categoryCode, countryName, city }) {
     website: tags.website || tags["contact:website"] || null,
     license: LICENSE,
     source_url: `https://www.openstreetmap.org/${element.type}/${element.id}`,
-    raw_payload: { tags: { name: tags.name, phone: tags.phone, website: tags.website } },
+    raw_payload: {
+      tags: {
+        name: tags.name,
+        phone: tags.phone,
+        website: tags.website,
+        ...(Object.keys(socialTags).length > 0 ? { social: socialTags } : {}),
+      },
+    },
   };
 }
 
-async function discover({ countryName, categoryCode, city, limit } = {}) {
+async function discover({ countryName, categoryCode, city, limit, areaAdminLevel } = {}) {
   const tag = OSM_TAG_BY_CATEGORY[categoryCode];
   if (!tag) return [];
 
@@ -120,7 +153,7 @@ async function discover({ countryName, categoryCode, city, limit } = {}) {
   if (!isoCode) return [];
 
   const cappedLimit = clampLimit(limit);
-  const query = buildQuery(isoCode, tag, cappedLimit);
+  const query = buildQuery(isoCode, tag, cappedLimit, { city, areaAdminLevel });
 
   // Overpass's usage policy expects a real, identifying User-Agent -- a
   // request without one was observed returning HTTP 406 during this

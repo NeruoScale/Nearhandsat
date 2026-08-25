@@ -64,7 +64,7 @@ async function recordSource(db, candidateId, raw) {
 // `limit` is enforced by the provider itself (see providerInterface.js).
 // Returns a summary object -- no candidate row is ever silently dropped
 // without being reflected in one of these counters.
-async function ingestCandidates(db, { provider = "osm", countryName, categoryCode, city, limit } = {}) {
+async function ingestCandidates(db, { provider = "osm", countryName, categoryCode, city, limit, areaAdminLevel } = {}) {
   const providerModule = PROVIDERS[provider];
   if (!providerModule) {
     throw new Error(`Unknown discovery provider: ${provider}`);
@@ -77,7 +77,11 @@ async function ingestCandidates(db, { provider = "osm", countryName, categoryCod
   // that isn't one of the 25 existing trade codes.
   const resolvedCategory = normalizeCategory(categoryCode) || categoryCode;
 
-  const rawCandidates = await providerModule.discover({ countryName, categoryCode: resolvedCategory, city, limit });
+  // README roadmap #7C: areaAdminLevel is an explicit, optional opt-in for
+  // a verified city-scoped query (see osmProvider.js's buildQuery) --
+  // simply passed through, never inferred or defaulted here, so every
+  // other existing call site (country-level discovery) is unaffected.
+  const rawCandidates = await providerModule.discover({ countryName, categoryCode: resolvedCategory, city, limit, areaAdminLevel });
 
   const summary = {
     discovered: rawCandidates.length,

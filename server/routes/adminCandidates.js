@@ -99,14 +99,17 @@ router.put("/:id/status", async (req, res) => {
 // ingestion run. No scheduler, no cron, no background worker: this is the
 // only way discovery ever runs in #7A, exactly as scoped.
 router.post("/discover", async (req, res) => {
-  const { provider = "osm", country, category, city, limit } = req.body || {};
+  // areaAdminLevel: README roadmap #7C -- an explicit, optional opt-in for
+  // a verified city-scoped Overpass query (see osmProvider.js). Omitted by
+  // default, so every existing (country-level) call is unaffected.
+  const { provider = "osm", country, category, city, limit, areaAdminLevel } = req.body || {};
   if (!country) return res.status(400).json({ error: "country is required." });
   if (!category || !TRADES.includes(category)) {
     return res.status(400).json({ error: "category must be one of the existing trade categories." });
   }
 
   try {
-    const summary = await ingestCandidates(db, { provider, countryName: country, categoryCode: category, city, limit });
+    const summary = await ingestCandidates(db, { provider, countryName: country, categoryCode: category, city, limit, areaAdminLevel });
     res.json(summary);
   } catch (err) {
     res.status(502).json({ error: `Discovery run failed: ${err.message}` });
