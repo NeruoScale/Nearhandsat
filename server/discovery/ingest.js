@@ -13,7 +13,7 @@ const {
   normalizePhone,
   normalizeWebsiteDomain,
 } = require("../utils/normalize");
-const { findDeterministicMatch, findProbableMatches } = require("../utils/candidateDedup");
+const { findDeterministicMatch, findProbableMatches, findPhysicalProximityMatches } = require("../utils/candidateDedup");
 const { findDeterministicUserMatch, findProbableUserMatches } = require("../utils/candidateIdentityMatch");
 
 const PROVIDERS = { osm: osmProvider };
@@ -159,6 +159,7 @@ async function ingestCandidates(db, { provider = "osm", countryName, categoryCod
     // Probable-duplicate check against other already-stored candidates.
     // Never auto-merges -- just logs, on both sides, for admin review.
     const probableMatches = await findProbableMatches(db, candidateData);
+    const alreadyFlaggedIds = new Set();
     for (const { candidate: otherCandidate, signals } of probableMatches) {
       if (otherCandidate.id === newId) continue;
       await recordEvent(db, newId, "probable_duplicate_flagged", {
@@ -166,6 +167,26 @@ async function ingestCandidates(db, { provider = "osm", countryName, categoryCod
       });
       await recordEvent(db, otherCandidate.id, "probable_duplicate_flagged", {
         detail: { otherCandidateId: newId, signals },
+      });
+      summary.probableDuplicatesFlagged += 1;
+      alreadyFlaggedIds.add(otherCandidate.id);
+    }
+
+    // README roadmap #7B: physical-location proximity check -- a separate,
+    // narrower signal for pairs the name-based check above can't see (one
+    // or both sides unnamed). Skips any pair the name-based check already
+    // flagged in this same pass, so a single real-world duplicate never
+    // produces two redundant event pairs. Same non-merging, admin-review-
+    // only mechanism as above, distinguished by a `confidence` field the
+    // name-based signal's event detail deliberately does not carry.
+    const proximityMatches = await findPhysicalProximityMatches(db, candidateData);
+    for (const { candidate: otherCandidate, confidence, signals, distanceMeters } of proximityMatches) {
+      if (otherCandidate.id === newId || alreadyFlaggedIds.has(otherCandidate.id)) continue;
+      await recordEvent(db, newId, "probable_duplicate_flagged", {
+        detail: { otherCandidateId: otherCandidate.id, signals, confidence, distanceMeters },
+      });
+      await recordEvent(db, otherCandidate.id, "probable_duplicate_flagged", {
+        detail: { otherCandidateId: newId, signals, confidence, distanceMeters },
       });
       summary.probableDuplicatesFlagged += 1;
     }
