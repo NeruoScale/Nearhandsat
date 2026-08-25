@@ -175,6 +175,67 @@ test("osmProvider: an unresolvable country name returns [] without making any ne
   }
 });
 
+// --- README roadmap #7D: verifyAreaBoundary (offline, mocked fetch) ---
+
+test("osmProvider.verifyAreaBoundary: missing city or areaAdminLevel is rejected without any network call", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = () => { throw new Error("must not call fetch when required params are missing"); };
+  try {
+    assert.equal((await osmProvider.verifyAreaBoundary(null, 8)).verified, false);
+    assert.equal((await osmProvider.verifyAreaBoundary("Chicago", null)).verified, false);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("osmProvider.verifyAreaBoundary: a real element in the response means verified=true", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ elements: [{ type: "node", id: 123 }] }) });
+  try {
+    const result = await osmProvider.verifyAreaBoundary("Chicago", 8);
+    assert.equal(result.verified, true);
+    assert.equal(result.reason, null);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("osmProvider.verifyAreaBoundary: zero elements means verified=false with an explanatory reason -- never silently treated as success", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({ ok: true, json: async () => ({ elements: [] }) });
+  try {
+    const result = await osmProvider.verifyAreaBoundary("Not A Real Place", 8);
+    assert.equal(result.verified, false);
+    assert.ok(result.reason);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("osmProvider.verifyAreaBoundary: a non-OK HTTP response is reported as a failure, not thrown uncaught", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({ ok: false, status: 429 });
+  try {
+    const result = await osmProvider.verifyAreaBoundary("Chicago", 8);
+    assert.equal(result.verified, false);
+    assert.match(result.reason, /429/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("osmProvider.verifyAreaBoundary: a network error is caught and reported, not thrown", async () => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => { throw new Error("simulated network failure"); };
+  try {
+    const result = await osmProvider.verifyAreaBoundary("Chicago", 8);
+    assert.equal(result.verified, false);
+    assert.match(result.reason, /simulated network failure/);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 // --- ingest.js (fake provider, real dedup/matching/storage logic) ---
 
 function fakeOsmRecord(overrides = {}) {

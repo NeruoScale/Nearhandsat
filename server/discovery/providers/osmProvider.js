@@ -145,6 +145,21 @@ function elementToCandidate({ element, categoryCode, countryName, city }) {
   };
 }
 
+// Overpass's usage policy expects a real, identifying User-Agent -- a
+// request without one was observed returning HTTP 406 during #7A's
+// real-API testing (a generic default User-Agent was rejected).
+async function postOverpassQuery(query) {
+  return fetch(OVERPASS_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Accept": "application/json",
+      "User-Agent": "NearHandsAT-candidate-discovery/1.0 (+https://nearhandsat.com)",
+    },
+    body: `data=${encodeURIComponent(query)}`,
+  });
+}
+
 async function discover({ countryName, categoryCode, city, limit, areaAdminLevel } = {}) {
   const tag = OSM_TAG_BY_CATEGORY[categoryCode];
   if (!tag) return [];
@@ -155,18 +170,7 @@ async function discover({ countryName, categoryCode, city, limit, areaAdminLevel
   const cappedLimit = clampLimit(limit);
   const query = buildQuery(isoCode, tag, cappedLimit, { city, areaAdminLevel });
 
-  // Overpass's usage policy expects a real, identifying User-Agent -- a
-  // request without one was observed returning HTTP 406 during this
-  // phase's real-API testing (a generic default User-Agent was rejected).
-  const res = await fetch(OVERPASS_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "Accept": "application/json",
-      "User-Agent": "NearHandsAT-candidate-discovery/1.0 (+https://nearhandsat.com)",
-    },
-    body: `data=${encodeURIComponent(query)}`,
-  });
+  const res = await postOverpassQuery(query);
   if (!res.ok) {
     throw new Error(`Overpass API request failed: HTTP ${res.status}`);
   }
@@ -178,4 +182,42 @@ async function discover({ countryName, categoryCode, city, limit, areaAdminLevel
     .filter(Boolean);
 }
 
-module.exports = { discover, OSM_TAG_BY_CATEGORY };
+// README roadmap #7D: boundary-verification helper for geographic
+// generalization beyond the 3 cities #7C already confirmed by hand. A
+// caller MUST run this before requesting a city-scoped discover() for a
+// new city -- discover() itself still does not guess or fall back (see
+// buildQuery's areaClause: a city-scoped call always uses exactly the
+// area the caller specified, succeeding or failing on its own, never
+// silently reverting to a country-level query). This function answers
+// ONLY "does this area["name"=...]["admin_level"=...] resolve to a real
+// area with a non-empty result," as cheaply as possible: `out ids 1`
+// returns at most one bare element id, never fetches business data, so
+// verifying a city costs a fraction of a real category query.
+async function verifyAreaBoundary(city, areaAdminLevel) {
+  if (!city || !areaAdminLevel) {
+    return { verified: false, reason: "city and areaAdminLevel are both required" };
+  }
+  const query =
+    `[out:json][timeout:25];` +
+    `area["name"="${city}"]["boundary"="administrative"]["admin_level"="${areaAdminLevel}"]->.searchArea;` +
+    `node(area.searchArea);` +
+    `out ids 1;`;
+
+  let res;
+  try {
+    res = await postOverpassQuery(query);
+  } catch (err) {
+    return { verified: false, reason: `network error: ${err.message}` };
+  }
+  if (!res.ok) {
+    return { verified: false, reason: `Overpass API request failed: HTTP ${res.status}` };
+  }
+  const body = await res.json();
+  const elements = Array.isArray(body.elements) ? body.elements : [];
+  if (elements.length === 0) {
+    return { verified: false, reason: "area resolved to zero elements -- boundary name/admin_level likely does not match a real OSM relation" };
+  }
+  return { verified: true, reason: null };
+}
+
+module.exports = { discover, verifyAreaBoundary, OSM_TAG_BY_CATEGORY };
