@@ -61,6 +61,19 @@ test("institutional: social_facility key (any value) -> institutional", () => {
   assert.equal(r.classification, "institutional");
 });
 
+// README roadmap #8C: a real, live Overpass sample (Houston, Plumber
+// category) returned two nodes tagged craft=plumber + office=union -- a
+// plumbers' union office, the same real-world entity type as #7C/#7D's
+// historical "Plumbers Local 68" candidate. Before this fix, the
+// validator classified both as business_candidate (craft=plumber alone
+// was enough) despite the co-occurring office=union tag -- a genuine,
+// live-data-demonstrated gap, not a hypothetical one.
+test("institutional: office=union overrides a co-occurring craft=plumber tag (real #8C live-sample finding)", () => {
+  const r = validateOsmEntityType(osm({ name: "Plumbers Local 68", craft: "plumber", office: "union" }));
+  assert.equal(r.classification, "institutional");
+  assert.equal(r.confidence, "high");
+});
+
 // --- Infrastructure / geographic evidence (the #7F gap) ---
 
 test("infrastructure: highway=primary/secondary/residential -> infrastructure_or_geographic, high confidence", () => {

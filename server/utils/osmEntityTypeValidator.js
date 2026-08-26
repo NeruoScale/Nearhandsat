@@ -46,7 +46,15 @@ const ALWAYS_BUSINESS_KEYS = ["shop", "craft"];
 // the same fact, even though they share a key.
 const INSTITUTIONAL_VALUES_BY_KEY = {
   amenity: ["school", "college", "university", "kindergarten", "childcare", "training", "driving_school", "social_facility"],
-  office: ["association", "government", "ngo", "diplomatic", "political_party", "religion"],
+  // "union" added per README roadmap #8C: a real, live Overpass sample
+  // returned two Houston nodes tagged craft=plumber + office=union (a
+  // plumbers' union office) -- structurally the same real-world entity
+  // type as #7C/#7D's historical "Plumbers Local 68" / "...Benefit
+  // Office" candidates, which entityQualityClassifier.js only caught via
+  // name-pattern matching. Without this value, #8B's structured validator
+  // classified both as business_candidate at high confidence -- a genuine,
+  // live-data-demonstrated gap, not a hypothetical one.
+  office: ["association", "government", "ngo", "diplomatic", "political_party", "religion", "union"],
 };
 // Any OTHER value for these keys counts as ordinary business evidence
 // (e.g. amenity=restaurant, office=company, office=lawyer).
