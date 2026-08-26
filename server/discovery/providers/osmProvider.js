@@ -93,7 +93,107 @@ function buildQuery(isoCode, tag, limit, { city, areaAdminLevel } = {}) {
   );
 }
 
-function elementToCandidate({ element, categoryCode, countryName, city }) {
+// ─── README roadmap #8A: structured OSM metadata envelope ─────────────────────
+//
+// Overpass's `out center tags` already returns EVERY tag on a matched
+// element -- the previous limitation (documented in #7F's investigation)
+// was entirely on this file's own side: elementToCandidate() only ever
+// copied {name, phone, website, social} into raw_payload, discarding
+// everything else Overpass had already sent. This is a capture-time fix
+// only -- the Overpass query itself, OSM_TAG_BY_CATEGORY, the category
+// matching logic, and every field written onto the `candidates` row
+// itself (display_name/state/city/address_raw/phone/email/website) are
+// UNCHANGED. Only what goes into candidate_sources.raw_payload (a plain
+// TEXT/JSON column, no schema change) is affected.
+//
+// Explicit, small allowlists -- never "whatever OSM sent." Each group maps
+// directly to a real analysis question a future classifier will ask:
+//   - identity: what is this thing actually called (beyond the one `name`
+//     this app already displays)?
+//   - classification: which OSM feature-type tags are present -- lets a
+//     future classifier see the RAW shop=/craft=/amenity=/office=/etc.
+//     evidence, not just our own derived category_code.
+//   - infrastructure: high-value non-business signals (the #7F "Downtown
+//     Connector" gap this phase exists to close) -- a future classifier
+//     can finally tell a highway/bridge/junction apart from a business
+//     using structured evidence instead of guessing from the name alone.
+//   - lifecycle: closed/disused/demolished/proposed status, plus
+//     check_date/survey:date as a freshness signal (a real tag observed
+//     live during #7C testing, e.g. Acuity Electric's check_date).
+//   - location: the exact addr:* tags already used to derive the
+//     candidate row's own city/state/address_raw fields, kept for source
+//     reproducibility.
+//   - contact: EXACTLY the existing, already-justified set (#7A's phone/
+//     email/website, #7C's social tags) -- not expanded.
+const BUSINESS_IDENTITY_TAGS = ["name", "official_name", "short_name", "brand", "operator", "alt_name"];
+const BUSINESS_CLASSIFICATION_TAGS = ["shop", "craft", "office", "amenity", "industrial", "healthcare", "tourism", "leisure", "building"];
+const INFRASTRUCTURE_TAGS = ["highway", "railway", "waterway", "route", "bridge", "junction", "place", "boundary", "landuse"];
+const LIFECYCLE_TAGS = ["disused", "abandoned", "demolished", "construction", "proposed", "check_date", "survey:date"];
+const LIFECYCLE_PREFIXES = ["disused:", "was:", "demolished:", "construction:", "proposed:", "abandoned:"];
+const LOCATION_TAGS = ["addr:housenumber", "addr:street", "addr:city", "addr:state", "addr:postcode", "addr:country"];
+const CONTACT_TAGS = [
+  "phone", "contact:phone", "email", "contact:email", "website", "contact:website",
+  "contact:facebook", "contact:instagram", "contact:linkedin", "contact:twitter", "contact:youtube",
+];
+
+// Everything NOT in one of the lists above is deliberately discarded --
+// data minimization (#8A's explicit mandate): opening_hours, payment:*,
+// operator-internal notes, free-text `note`/`fixme`, wheelchair access,
+// and any other tag Overpass may return never enters storage. This is a
+// conscious boundary, not an oversight -- extending it requires a
+// specific, justified reason the same way each list above was justified.
+function pickAllowlistedTags(tags, allowlist) {
+  const picked = {};
+  for (const key of allowlist) {
+    if (tags[key] !== undefined) picked[key] = tags[key];
+  }
+  return picked;
+}
+
+function pickLifecyclePrefixedTags(tags) {
+  const picked = {};
+  for (const [key, value] of Object.entries(tags)) {
+    if (LIFECYCLE_PREFIXES.some((prefix) => key.startsWith(prefix))) picked[key] = value;
+  }
+  return picked;
+}
+
+function buildOsmMetadataEnvelope({ element, tag }) {
+  const tags = element.tags || {};
+
+  const identity = pickAllowlistedTags(tags, BUSINESS_IDENTITY_TAGS);
+  const classification = pickAllowlistedTags(tags, BUSINESS_CLASSIFICATION_TAGS);
+  const infrastructure = pickAllowlistedTags(tags, INFRASTRUCTURE_TAGS);
+  const lifecycle = { ...pickAllowlistedTags(tags, LIFECYCLE_TAGS), ...pickLifecyclePrefixedTags(tags) };
+  const location = pickAllowlistedTags(tags, LOCATION_TAGS);
+  const contact = pickAllowlistedTags(tags, CONTACT_TAGS);
+
+  const envelopeTags = {
+    ...identity,
+    ...classification,
+    ...infrastructure,
+    ...(Object.keys(lifecycle).length > 0 ? lifecycle : {}),
+    ...location,
+    ...contact,
+  };
+
+  return {
+    source: "osm",
+    osm: {
+      type: element.type,
+      id: element.id,
+      // The EXACT tag that matched our category query -- provenance
+      // separation (#8A §16): "OSM returned shop=car_repair" is a
+      // different, more durable fact than "our app classified this as
+      // Auto Mechanic," and the two must never be conflated into one
+      // field.
+      category_signal: tag ? { key: tag.key, value: tag.value } : null,
+      tags: envelopeTags,
+    },
+  };
+}
+
+function elementToCandidate({ element, categoryCode, countryName, city, tag }) {
   const tags = element.tags || {};
   const lat = element.lat ?? element.center?.lat ?? null;
   const lon = element.lon ?? element.center?.lon ?? null;
@@ -108,11 +208,12 @@ function elementToCandidate({ element, categoryCode, countryName, city }) {
     return null;
   }
 
-  // README roadmap #7C: social/contact-profile tags, captured for
-  // enrichment-feasibility ANALYSIS only (contact-method availability
-  // measurement) -- deliberately still not "whatever the provider
-  // returned": only the specific handful of tag keys #7C's report asks
-  // about, same restraint as the phone/email/website capture below.
+  // README roadmap #7C: social/contact-profile tags, used for the
+  // candidate row's own display fields -- unchanged from #7C. The
+  // structured, fuller capture of the same tags now also lives in
+  // raw_payload.osm.tags (see buildOsmMetadataEnvelope above); this
+  // block is kept exactly as-is so display_name/phone/email/website on
+  // the `candidates` row itself are byte-for-byte unaffected by #8A.
   const socialTags = {};
   for (const key of ["contact:facebook", "contact:instagram", "contact:linkedin", "contact:twitter", "contact:youtube"]) {
     if (tags[key]) socialTags[key] = tags[key];
@@ -134,14 +235,7 @@ function elementToCandidate({ element, categoryCode, countryName, city }) {
     website: tags.website || tags["contact:website"] || null,
     license: LICENSE,
     source_url: `https://www.openstreetmap.org/${element.type}/${element.id}`,
-    raw_payload: {
-      tags: {
-        name: tags.name,
-        phone: tags.phone,
-        website: tags.website,
-        ...(Object.keys(socialTags).length > 0 ? { social: socialTags } : {}),
-      },
-    },
+    raw_payload: buildOsmMetadataEnvelope({ element, tag }),
   };
 }
 
@@ -178,7 +272,7 @@ async function discover({ countryName, categoryCode, city, limit, areaAdminLevel
   const elements = Array.isArray(body.elements) ? body.elements : [];
 
   return elements
-    .map((element) => elementToCandidate({ element, categoryCode, countryName, city }))
+    .map((element) => elementToCandidate({ element, categoryCode, countryName, city, tag }))
     .filter(Boolean);
 }
 
@@ -220,4 +314,17 @@ async function verifyAreaBoundary(city, areaAdminLevel) {
   return { verified: true, reason: null };
 }
 
-module.exports = { discover, verifyAreaBoundary, OSM_TAG_BY_CATEGORY };
+module.exports = {
+  discover,
+  verifyAreaBoundary,
+  OSM_TAG_BY_CATEGORY,
+  buildOsmMetadataEnvelope,
+  elementToCandidate,
+  BUSINESS_IDENTITY_TAGS,
+  BUSINESS_CLASSIFICATION_TAGS,
+  INFRASTRUCTURE_TAGS,
+  LIFECYCLE_TAGS,
+  LIFECYCLE_PREFIXES,
+  LOCATION_TAGS,
+  CONTACT_TAGS,
+};
